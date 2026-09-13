@@ -1,0 +1,31 @@
+{
+  "doi": "10.5281/zenodo.10676866",
+  "zenodo_record": 10676866,
+  "files": {
+    "proofread_root_ids_783.npy": {
+      "bytes": 1114168,
+      "md5": "e0e6c19732fd8c7a4e39a2d170105421",
+      "url": "https://zenodo.org/api/records/10676866/files/proofread_root_ids_783.npy/content"
+    },
+    "per_neuron_neuropil_count_pre_783.feather": {
+      "bytes": 16853770,
+      "md5": "90fcdb42c1ba05ed92820840fa1e6ba0",
+      "url": "https://zenodo.org/api/records/10676866/files/per_neuron_neuropil_count_pre_783.feather/content"
+    },
+    "per_neuron_neuropil_count_post_783.feather": {
+      "bytes": 233843050,
+      "md5": "bb5999f10920ade803d9f37097a43a56",
+      "url": "https://zenodo.org/api/records/10676866/files/per_neuron_neuropil_count_post_783.feather/content"
+    },
+    "proofread_connections_783.feather": {
+      "bytes": 852022274,
+      "md5": "f48f972d262323a102aed49af1396b8a",
+      "url": "https://zenodo.org/api/records/10676866/files/proofread_connections_783.feather/content"
+    },
+    "flywire_synapses_783.feather": {
+      "bytes": 9492998242,
+      "md5": "f8f1b97c9d4b0ea9b4c8b287f6b99091",
+      "url": "https://zenodo.org/api/records/10676866/files/flywire_synapses_783.feather/content"
+    }
+  }
+}

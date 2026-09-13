@@ -1,0 +1,58 @@
+"""Slash command registry + palette filtering."""
+from __future__ import annotations
+
+from typing import List, Tuple
+
+# (verb, help, dsc?, flywire?)
+COMMANDS: List[Tuple[str, str, bool, bool]] = [
+    ("help", "list commands", True, True),
+    ("load", "load substrate: /load flywire|dsc [path]", True, True),
+    ("status", "mode, sizes, focus", True, True),
+    ("focus", "narrow canvas: neuropil / id / all", False, True),
+    ("signal", "list or pin a signal series", True, True),
+    ("sample", "live refresh Hz (default 8); e.g. /sample 16", True, True),
+    ("tick", "advance DSC n steps", True, False),
+    ("save", "checkpoint: /save  or  /save my_name", True, False),
+    ("evolve", "run evolution cycles", True, False),
+    ("bench", "run named benchmark", True, False),
+    ("rollback", "request last-good DSC state", True, False),
+    ("export", "dump frame + log under UI/exports/", True, True),
+    ("clear", "clear terminal scrollback", True, True),
+    ("quit", "exit console", True, True),
+]
+
+DEFAULT_SAMPLE_HZ = 8.0
+MIN_SAMPLE_HZ = 1.0
+MAX_SAMPLE_HZ = 30.0
+
+
+def all_verbs() -> List[str]:
+    return [c[0] for c in COMMANDS]
+
+
+def palette_lines(prefix: str = "/", mode: str = "EMPTY") -> List[str]:
+    """Filter commands for the strip above the input."""
+    raw = prefix[1:] if prefix.startswith("/") else prefix
+    raw = raw.split()[0] if raw.strip() else ""
+    lines = []
+    for verb, help_, dsc_ok, fly_ok in COMMANDS:
+        if raw and not verb.startswith(raw):
+            continue
+        if mode == "FLYWIRE" and not fly_ok:
+            avail = "· dsc-only"
+        elif mode == "DSC" and not dsc_ok:
+            avail = "· fly-only"
+        else:
+            avail = ""
+        lines.append(f"/{verb:<10} {help_} {avail}".rstrip())
+    return lines or ["(no matching commands)"]
+
+
+def parse(line: str) -> Tuple[str, List[str]]:
+    s = line.strip()
+    if not s.startswith("/"):
+        return "", []
+    parts = s[1:].split()
+    if not parts:
+        return "", []
+    return parts[0].lower(), parts[1:]

@@ -1,0 +1,71 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+**/venv/
+UI/.venv/
+
+# Local secrets / tokens (CAVE etc. — not used for offline FlyWire path)
+.env
+.env.*
+*.pem
+cave_token*
+.caveclient*
+
+# --- Large biological connectome DATA (keep README + manifest only) ---
+# Obtain packs locally; see root README.md "Getting biological packs"
+MODELS/fly/flywire_v783/**
+!MODELS/fly/flywire_v783/README.md
+!MODELS/fly/flywire_v783/manifest.json
+
+MODELS/fly/male_cns_v1.0/**
+!MODELS/fly/male_cns_v1.0/README.md
+!MODELS/fly/male_cns_v1.0/manifest.json
+
+MODELS/fly/hemibrain_v1.2.1/**
+!MODELS/fly/hemibrain_v1.2.1/README.md
+!MODELS/fly/hemibrain_v1.2.1/manifest.json
+
+# Any future bulk under MODELS
+MODELS/**/*.feather
+MODELS/**/*.npy
+MODELS/**/*.npz
+MODELS/**/*.h5
+MODELS/**/*.parquet
+MODELS/**/*.zip
+MODELS/**/*.tar
+MODELS/**/*.tar.gz
+MODELS/**/download.log
+
+# --- Active DSC tip: COMMIT the small MVP checkpoint (user request) ---
+# Still ignore junk; track checkpoint + harness + manifest
+MODEL/active/.gitkeep
+MODEL/active/.keep
+MODEL/archive/**
+
+# Saved session bundles stay local (can be large / numerous)
+MODEL/saves/**
+!MODEL/saves/README.md
+
+# UI exports / recordings
+UI/exports/
+*.png
+!**/docs/**/*.png
+

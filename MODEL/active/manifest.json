@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "kind": "dsc_model_bundle",
+  "revision": "r1-n128-e1276",
+  "updated_utc": "2026-09-13T20:34:16Z",
+  "created_utc": "2026-09-13T20:34:16Z",
+  "note": "MVP runtime: F001+F002+F003+F005+F010",
+  "pairs_with_features": [
+    "F001",
+    "F002",
+    "F003",
+    "F005",
+    "F010",
+    "F013"
+  ],
+  "ui_default": true,
+  "substrate": {
+    "family": "erdos_renyi_directed",
+    "n": 128,
+    "p": 0.08,
+    "seed": 42,
+    "directed": true,
+    "density": 0.07849409448818898,
+    "n_edges": 1276
+  },
+  "checkpoint": "checkpoint.npz",
+  "harness": "harness.json",
+  "display_name": "dsc_20260913_203416.model",
+  "saved_utc": "2026-09-13T20:34:16Z"
+}

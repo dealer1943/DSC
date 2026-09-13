@@ -1,0 +1,26 @@
+{
+  "connectome-weights-male-cns-v1.0-minconf-0.5.feather": {
+    "url": "https://storage.googleapis.com/flyem-male-cns/v1.0/connectome-data/flat-connectome/connectome-weights-male-cns-v1.0-minconf-0.5.feather",
+    "bytes": 1051241946,
+    "md5": "8w6dzKJc/QIb8eez2XVZng==",
+    "source": "gs://flyem-male-cns/v1.0/connectome-data/flat-connectome/connectome-weights-male-cns-v1.0-minconf-0.5.feather",
+    "via": "fruitfly/connectome-headless-viz mindmeld.download",
+    "citation": "Janelia MaleCNS v1.0 flat connectome"
+  },
+  "body-neurotransmitters-male-cns-v1.0.feather": {
+    "url": "https://storage.googleapis.com/flyem-male-cns/v1.0/connectome-data/flat-connectome/body-neurotransmitters-male-cns-v1.0.feather",
+    "bytes": 43282834,
+    "md5": "PYQrEv5cSe763lKNfdJKHw==",
+    "source": "gs://flyem-male-cns/v1.0/connectome-data/flat-connectome/body-neurotransmitters-male-cns-v1.0.feather",
+    "via": "fruitfly/connectome-headless-viz mindmeld.download",
+    "citation": "Janelia MaleCNS v1.0 flat connectome"
+  },
+  "body-annotations-male-cns-v1.0-minconf-0.5.feather": {
+    "url": "https://storage.googleapis.com/flyem-male-cns/v1.0/connectome-data/flat-connectome/body-annotations-male-cns-v1.0-minconf-0.5.feather",
+    "bytes": 14483314,
+    "md5": "UKdxh3DFciDxYLpPQxq4ng==",
+    "source": "gs://flyem-male-cns/v1.0/connectome-data/flat-connectome/body-annotations-male-cns-v1.0-minconf-0.5.feather",
+    "via": "fruitfly/connectome-headless-viz mindmeld.download",
+    "citation": "Janelia MaleCNS v1.0 flat connectome"
+  }
+}

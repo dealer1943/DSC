@@ -1,0 +1,16 @@
+# DSC — Python dependencies (runtime + operator console)
+# Python >= 3.9
+#
+#   python3 -m venv .venv
+#   source .venv/bin/activate   # Windows: .venv\Scripts\activate
+#   pip install -r requirements.txt
+#   pip install -e .                 # makes `python -m dsc` work from any cwd
+#
+# Core runtime (`python -m dsc`, MODEL/active)
+numpy>=1.24
+
+# Operator console + FlyWire load (`cd UI && python -m console`)
+textual>=0.80
+rich>=13
+pandas>=2.0
+pyarrow>=14
