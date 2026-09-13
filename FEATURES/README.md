@@ -24,3 +24,6 @@ Stubs first; implementation later. Each file states purpose and first-principles
 
 ## S004 (2026-09-13)
 F004 light, F006 MVP, F009 light are **implemented** — see slice `SLICES/S004_evolution_mvp.md`.
+
+## S005 (2026-09-13)
+F007 latent prune, F008 absorption, and evolve crossover are **implemented**.

@@ -16,6 +16,7 @@ from dsc.substrate import Substrate, assert_invariants, generate_substrate
 from dsc.utility import update_utilities
 from dsc.differentiation import update_differentiation
 from dsc.evolve import PopSnapshot, run_cycles
+from dsc.latent import LatentPool
 
 DEFAULT_ACTIVE = Path(__file__).resolve().parents[1] / "MODEL" / "active"
 
@@ -30,6 +31,7 @@ class DscRuntime:
     events: List[str] = field(default_factory=list)
     last_good: Optional[PopSnapshot] = None
     evolve_count: int = 0
+    latent: LatentPool = field(default_factory=LatentPool)
 
     def _push(self, name: str, value: float, maxlen: int = 64) -> None:
         h = self.signal_hist.setdefault(name, [])
@@ -83,6 +85,9 @@ class DscRuntime:
             "err": round(self.harness.last_err, 5),
             "utility_mean": round(float(self.pop.utility.mean()), 5),
             "stem_frac": round(stem_frac, 3),
+            "diff_mean": round(float(self.pop.differentiation.mean()), 4),
+            "evolve_count": self.evolve_count,
+            "latent_pool": len(self.latent),
             "activity_mean": round(float(self.pop.activity.mean()), 5),
             "task": defaults.TASK_NAME,
         }
@@ -140,7 +145,11 @@ class DscRuntime:
 
     def snapshot_good(self, note: str = "") -> PopSnapshot:
         snap = PopSnapshot.capture(
-            self.pop, self.harness, signal_hist=self.signal_hist, note=note
+            self.pop,
+            self.harness,
+            self.latent,
+            signal_hist=self.signal_hist,
+            note=note,
         )
         self.last_good = snap
         return snap
@@ -151,7 +160,7 @@ class DscRuntime:
         # batch-level last-good before any cycle
         self.snapshot_good(note=f"pre-evolve/{n}")
         # last_good stays as pre-batch anchor so /rollback undoes this /evolve
-        reports = run_cycles(self.pop, self.harness, n, seed=seed)
+        reports, self.latent = run_cycles(self.pop, self.harness, self.latent, n, seed=seed)
         lines = []
         ok_cycles = 0
         for i, rep in enumerate(reports, 1):
@@ -165,7 +174,8 @@ class DscRuntime:
         lines.append(
             f"evolve done · applied={ok_cycles}/{len(reports)} · "
             f"diff_mean={float(self.pop.differentiation.mean()):.3f} · "
-            f"stem_frac={float((self.pop.differentiation < defaults.DIFF_STEM_LABEL).mean()):.3f}"
+            f"stem_frac={float((self.pop.differentiation < defaults.DIFF_STEM_LABEL).mean()):.3f} · "
+            f"latent={len(self.latent)}"
         )
         for ln in lines:
             self.log(ln)
@@ -175,7 +185,7 @@ class DscRuntime:
         """Restore last-good snapshot (F009)."""
         if self.last_good is None:
             return ["refuse: no last-good snapshot — run /evolve first"]
-        self.last_good.restore(self.pop, self.harness)
+        self.latent = self.last_good.restore(self.pop, self.harness, self.latent)
         if self.last_good.signal_hist:
             self.signal_hist = {k: list(v) for k, v in self.last_good.signal_hist.items()}
         msg = f"rollback ok · restored ({self.last_good.note or 'last-good'})"
@@ -195,6 +205,7 @@ class DscRuntime:
             name=name,
             progress=progress,
             also_active=active,
+            latent=self.latent,
         )
         self.manifest = json_load_manifest(active)
         self.log(f"saved {path.name}")
@@ -202,7 +213,7 @@ class DscRuntime:
 
     def save(self, root: Optional[Path] = None, progress: Optional[ProgressCb] = None) -> None:
         root = Path(root) if root else DEFAULT_ACTIVE
-        save_active(root, self.sub, self.pop, self.harness, progress=progress)
+        save_active(root, self.sub, self.pop, self.harness, progress=progress, latent=self.latent)
         self.manifest = json_load_manifest(root)
 
 
@@ -252,7 +263,7 @@ def load_mvp(
     progress: Optional[ProgressCb] = None,
 ) -> DscRuntime:
     active_dir = Path(active_dir) if active_dir else DEFAULT_ACTIVE
-    sub, pop, harness, man = load_active(active_dir, progress=progress)
-    rt = DscRuntime(sub=sub, pop=pop, harness=harness, manifest=man)
+    sub, pop, harness, man, latent = load_active(active_dir, progress=progress)
+    rt = DscRuntime(sub=sub, pop=pop, harness=harness, manifest=man, latent=latent)
     rt.log(f"DSC loaded · {rt.revision}")
     return rt

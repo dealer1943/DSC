@@ -1,14 +1,17 @@
 ---
 id: F008
 title: Coverage absorption
-status: stub
+status: implemented
 phase: 4
 pairs_with: [B008]
 updated: 2026-09-13
+slice: S005
 ---
 
 ## Purpose
-When a cell is pruned from the active set, redistribute the input patterns it dominated to surviving cells (e.g., widen basins / raise coverage of the strongest remaining responders) so responsibility for those inputs is not orphaned.
+When a cell is pruned, redistribute the niche it owned to surviving cells so responsibility is not orphaned.
 
-## Why it is fundamental
-Pruning without absorption leaves holes in the input map: the population looks smaller but fails silently on regions the pruned cell owned. Absorption couples removal to continuity of function—size reduction that preserves competence.
+## Algorithm
+Before overwriting a victim (`dsc/absorb.py`):
+- Score survivors by gate cosine similarity + activity
+- Blend victim `type_weights` / `bias` / partial `gate_logits` into top `ABSORB_TOP` with `ABSORB_BLEND`

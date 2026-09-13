@@ -22,9 +22,10 @@ class Population:
     readout: np.ndarray           # (H,) system readout
     utility: np.ndarray           # (N,) EMA utility
     age: np.ndarray               # (N,) int
-    differentiation: np.ndarray   # (N,) 0=plastic STEM … 1=committed (F004 later)
+    differentiation: np.ndarray   # (N,) 0=plastic STEM … 1=committed (F004)
     activity: np.ndarray          # (N,) last activity magnitude
     hidden: np.ndarray            # (N, H) last hidden state
+    fail_streak: np.ndarray       # (N,) F007 sustained low-utility count
 
     @property
     def n(self) -> int:
@@ -80,6 +81,7 @@ def init_population(
         differentiation=np.zeros(n, dtype=np.float64),
         activity=np.zeros(n, dtype=np.float64),
         hidden=np.zeros((n, h), dtype=np.float64),
+        fail_streak=np.zeros(n, dtype=np.int32),
     )
     emit(progress, 1.0, f"cells: n={n} types={t} hidden={h}")
     return pop

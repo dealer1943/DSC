@@ -17,6 +17,7 @@ from dsc.cells import Population
 from dsc.harness import TemporalHarness
 from dsc.progress import ProgressCb, emit
 from dsc.substrate import Substrate
+from dsc.latent import LatentPool
 
 
 def _utc() -> str:
@@ -30,13 +31,14 @@ def save_active(
     harness: TemporalHarness,
     extra: Optional[Dict[str, Any]] = None,
     progress: Optional[ProgressCb] = None,
+    latent: Optional[LatentPool] = None,
 ) -> Path:
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
     emit(progress, 0.2, "persist: writing checkpoint.npz")
     path = root / defaults.CHECKPOINT_NAME
-    np.savez_compressed(
-        path,
+    latent = latent if latent is not None else LatentPool()
+    payload = dict(
         adj=sub.adj,
         gate_logits=pop.gate_logits,
         type_weights=pop.type_weights,
@@ -47,7 +49,10 @@ def save_active(
         differentiation=pop.differentiation,
         activity=pop.activity,
         hidden=pop.hidden,
+        fail_streak=pop.fail_streak,
     )
+    payload.update(latent.to_npz())
+    np.savez_compressed(path, **payload)
     emit(progress, 0.7, "persist: writing manifest")
     harness_path = root / "harness.json"
     harness_path.write_text(json.dumps(harness.state_dict(), indent=2) + "\n")
@@ -58,7 +63,7 @@ def save_active(
         "updated_utc": _utc(),
         "created_utc": _utc(),
         "note": "MVP+evolve: F001–F006/F009 light + F010/F013/F014",
-        "pairs_with_features": ["F001", "F002", "F003", "F004", "F005", "F006", "F009", "F010", "F013", "F014"],
+        "pairs_with_features": ["F001", "F002", "F003", "F004", "F005", "F006", "F007", "F008", "F009", "F010", "F013", "F014"],
         "ui_default": True,
         "substrate": sub.meta,
         "checkpoint": defaults.CHECKPOINT_NAME,
@@ -84,7 +89,7 @@ def save_active(
 def load_active(
     root: Path,
     progress: Optional[ProgressCb] = None,
-) -> Tuple[Substrate, Population, TemporalHarness, Dict[str, Any]]:
+) -> Tuple[Substrate, Population, TemporalHarness, Dict[str, Any], LatentPool]:
     root = Path(root)
     emit(progress, 0.05, "load: reading manifest")
     man = json.loads((root / "manifest.json").read_text())
@@ -95,6 +100,7 @@ def load_active(
     if "n" not in sub.meta:
         sub.meta.update({"n": int(adj.shape[0]), "n_edges": int(adj.sum()), "density": float(adj.sum() / (adj.shape[0]*(adj.shape[0]-1)))})
     emit(progress, 0.55, "load: restoring population")
+    fs = data["fail_streak"] if "fail_streak" in data.files else np.zeros(data["utility"].shape[0], dtype=np.int32)
     pop = Population(
         gate_logits=data["gate_logits"],
         type_weights=data["type_weights"],
@@ -105,14 +111,16 @@ def load_active(
         differentiation=data["differentiation"],
         activity=data["activity"],
         hidden=data["hidden"],
+        fail_streak=np.asarray(fs, dtype=np.int32),
     )
+    latent = LatentPool.from_npz(data)
     emit(progress, 0.8, "load: restoring harness")
     harness = TemporalHarness()
     hpath = root / "harness.json"
     if hpath.exists():
         harness.load_state(json.loads(hpath.read_text()))
     emit(progress, 1.0, f"load: ready · {man.get('revision', 'active')}")
-    return sub, pop, harness, man
+    return sub, pop, harness, man, latent
 
 
 
@@ -146,6 +154,7 @@ def save_model_bundle(
     extra: Optional[Dict[str, Any]] = None,
     progress: Optional[ProgressCb] = None,
     also_active: Optional[Path] = None,
+    latent: Optional[LatentPool] = None,
 ) -> Path:
     """
     Write a .model zip under saves_root and optionally mirror into also_active/.
@@ -159,7 +168,7 @@ def save_model_bundle(
 
     with tempfile.TemporaryDirectory(prefix="dsc_save_") as tmp:
         tmp_path = Path(tmp)
-        save_active(tmp_path, sub, pop, harness, extra=extra, progress=None)
+        save_active(tmp_path, sub, pop, harness, extra=extra, progress=None, latent=latent)
         # stamp display name into manifest
         man_path = tmp_path / "manifest.json"
         man = json.loads(man_path.read_text())

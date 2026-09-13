@@ -8,11 +8,11 @@
 
 | Field | Value |
 |--------|--------|
-| Phase | S004 evolve MVP (F004/F006/F009 light) |
-| Last completed slice | S004 evolution MVP |
+| Phase | S005 prune/absorb/crossover on evolve |
+| Last completed slice | S005 latent + absorb + crossover |
 | Prior completed | `S000` continuity scaffold |
-| Active slice | none (S004 just landed) |
-| Next | F007 latent prune → F008 absorption; harden B006/B009 |
+| Active slice | none |
+| Next | B006/B007/B008 benches or F016 tutorial / R001 meta-manager |
 | Code | `dsc/` + evolve/differentiation; UI `/evolve` `/rollback`; MODEL/active tip |
 | Blockers | None |
 

@@ -62,3 +62,17 @@ ROLLBACK_UTIL_CLIFF = 0.45        # mean utility drop fraction vs pre-cycle → 
 ROLLBACK_FOOTPRINT_MIN = 1e-4     # near-zero floor only (DSC activity is often ~0.01–0.05)
 ROLLBACK_FOOTPRINT_REL = 0.20     # activity mean must stay ≥ this × pre-cycle
 
+# Latent prune pool (F007)
+LATENT_POOL_MAX = 64
+PRUNE_FAIL_STREAK = 8          # sustained low-utility ticks before eligible for latent
+PRUNE_UTIL_QUANTILE = 0.25     # below this quantile counts as "low" for streak
+REACTIVATE_RATE = 0.08         # chance per cycle to revive one latent into a victim slot
+
+# Coverage absorption (F008)
+ABSORB_BLEND = 0.35            # how much pruned cell params bleed into absorbers
+ABSORB_TOP = 3                 # number of surviving absorbers per prune
+
+# Crossover (F006 fancy)
+EVOLVE_CROSSOVER_RATE = 0.35   # fraction of replacements that blend two elites
+EVOLVE_CROSSOVER_ALPHA = 0.5   # mix weight parent_a vs parent_b (jittered)
+
