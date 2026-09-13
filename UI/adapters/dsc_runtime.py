@@ -47,9 +47,9 @@ class DscRuntimeAdapter:
             "clear": True,
             "tick": True,
             "save": True,
-            "evolve": False,
+            "evolve": True,
             "bench": False,
-            "rollback": False,
+            "rollback": True,
         }
 
     def load(self, path: Optional[str] = None, build_if_missing: bool = True) -> List[str]:
@@ -119,7 +119,7 @@ class DscRuntimeAdapter:
         )
 
     def focus(self, query: str) -> List[str]:
-        return ["focus: DSC grid shows all cells (F015); type filters come with F004"]
+        return ["focus: DSC grid shows all cells (F015); STEM vs typed uses differentiation (F004)"]
 
     def sample_frame(self, phase: float) -> None:
         """Live pulse: one quiet tick every few frames keeps signals moving."""
@@ -174,8 +174,25 @@ class DscRuntimeAdapter:
             return [f"{name}: n={len(h)} last={h[-1] if h else '—'}"]
         if verb == "focus":
             return self.focus(" ".join(args))
-        if verb in ("evolve", "bench", "rollback"):
-            return [f"refuse: /{verb} not in MVP five — next slice"]
+        if verb == "evolve":
+            if self._rt is None:
+                return ["refuse: nothing loaded"]
+            n = 1
+            if args:
+                try:
+                    n = int(args[0])
+                except ValueError:
+                    return ["usage: /evolve [n]"]
+            from dsc import defaults as d
+            n = max(1, min(n, d.EVOLVE_MAX_CYCLES))
+            out = self._rt.evolve(n)
+            return list(out["lines"])
+        if verb == "rollback":
+            if self._rt is None:
+                return ["refuse: nothing loaded"]
+            return self._rt.rollback()
+        if verb == "bench":
+            return ["refuse: /bench not wired — see BENCHMARKS/"]
         return [f"unknown verb /{verb}"]
 
 

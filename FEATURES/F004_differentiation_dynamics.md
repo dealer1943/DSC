@@ -1,14 +1,28 @@
 ---
 id: F004
 title: Differentiation dynamics
-status: stub
+status: implemented (light)
 phase: 2
 pairs_with: [B004]
 updated: 2026-09-13
+slice: S004
 ---
 
 ## Purpose
-Drive a continuous `differentiation ∈ [0,1]` variable from utility stability: rising commitment when contribution is stable, increasing plasticity when utility falls—allowing reversion toward STEM and re-differentiation.
+Drive continuous `differentiation ∈ [0,1]` per cell from **utility stability**: rise when contribution is stable/high, fall toward STEM when utility drops.
 
 ## Why it is fundamental
-Static type labels freeze early mistakes. Plasticity coupled to measured usefulness lets the population repair itself under shifting tasks without external type schedules. Commitment without an escape hatch is brittle; pure perpetual STEM never specializes.
+Static type labels freeze early mistakes. Plasticity coupled to measured usefulness lets the population repair itself under shifting tasks. Commitment without an escape hatch is brittle; pure perpetual STEM never specializes.
+
+## Algorithm (light)
+After each utility EMA update (`dsc/differentiation.py`):
+- `stable` if `|Δu| ≤ DIFF_STABILITY_EPS`
+- rise `DIFF_RISE` when stable (stronger if above median utility)
+- fall `DIFF_FALL` when utility drops
+- low-utility cells gently decay toward STEM
+- EMA blend with `DIFF_EMA_ALPHA`; clip to `[0,1]`
+
+UI: cells with `differentiation < DIFF_STEM_LABEL` (0.35) display as `STEM`; otherwise mixture-argmax type name.
+
+## Persistence
+Stored in `checkpoint.npz` as `differentiation` (already in F001 persist path).

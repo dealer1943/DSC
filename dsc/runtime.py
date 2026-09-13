@@ -14,6 +14,8 @@ from dsc.persist import load_active, save_active, save_model_bundle, sanitize_mo
 from dsc.progress import ProgressCb, emit
 from dsc.substrate import Substrate, assert_invariants, generate_substrate
 from dsc.utility import update_utilities
+from dsc.differentiation import update_differentiation
+from dsc.evolve import PopSnapshot, run_cycles
 
 DEFAULT_ACTIVE = Path(__file__).resolve().parents[1] / "MODEL" / "active"
 
@@ -26,6 +28,8 @@ class DscRuntime:
     manifest: Dict[str, Any] = field(default_factory=dict)
     signal_hist: Dict[str, List[float]] = field(default_factory=dict)
     events: List[str] = field(default_factory=list)
+    last_good: Optional[PopSnapshot] = None
+    evolve_count: int = 0
 
     def _push(self, name: str, value: float, maxlen: int = 64) -> None:
         h = self.signal_hist.setdefault(name, [])
@@ -49,7 +53,10 @@ class DscRuntime:
             y_hat = step_population(self.pop, self.sub, x)
             err = self.harness.score(y_hat, y)
             reward = -err
+            prev_u = self.pop.utility.copy()
             last = update_utilities(self.pop, reward)
+            dstat = update_differentiation(self.pop, prev_u)
+            last.update(dstat)
             last.update({"err": err, "y": y, "y_hat": y_hat, "t": self.harness.t})
             self._push("err", err)
             self._push("y_hat", y_hat)
@@ -57,12 +64,14 @@ class DscRuntime:
             self._push("activity_mean", float(self.pop.activity.mean()))
             self._push("coverage_mean", last["coverage_mean"])
             self._push("novelty_mean", last["novelty_mean"])
+            self._push("diff_mean", last["diff_mean"])
+            self._push("stem_frac", last["stem_frac"])
         self.log(f"tick t={self.harness.t} err={last.get('err', 0):.4f} util={last.get('utility_mean', 0):.4f}")
         return last
 
     def status(self) -> Dict[str, Any]:
         mix = self.pop.mixture()
-        stem_frac = float((self.pop.differentiation < 0.35).mean())
+        stem_frac = float((self.pop.differentiation < defaults.DIFF_STEM_LABEL).mean())
         return {
             "mode": "DSC",
             "pack": "active",
@@ -127,6 +136,51 @@ class DscRuntime:
                         return edges
         return edges
 
+
+
+    def snapshot_good(self, note: str = "") -> PopSnapshot:
+        snap = PopSnapshot.capture(
+            self.pop, self.harness, signal_hist=self.signal_hist, note=note
+        )
+        self.last_good = snap
+        return snap
+
+    def evolve(self, n: int = 1, seed=None):
+        """F006 cycles with F009 light auto-rollback; refreshes last_good on success."""
+        n = int(n) if n is not None else defaults.EVOLVE_DEFAULT_CYCLES
+        # batch-level last-good before any cycle
+        self.snapshot_good(note=f"pre-evolve/{n}")
+        # last_good stays as pre-batch anchor so /rollback undoes this /evolve
+        reports = run_cycles(self.pop, self.harness, n, seed=seed)
+        lines = []
+        ok_cycles = 0
+        for i, rep in enumerate(reports, 1):
+            lines.extend(rep.lines(i))
+            if not rep.rolled_back:
+                ok_cycles += 1
+                self.evolve_count += 1
+            self._push("utility_mean", rep.util_after if not rep.rolled_back else rep.util_before)
+            self._push("diff_mean", float(self.pop.differentiation.mean()))
+            self._push("stem_frac", float((self.pop.differentiation < defaults.DIFF_STEM_LABEL).mean()))
+        lines.append(
+            f"evolve done · applied={ok_cycles}/{len(reports)} · "
+            f"diff_mean={float(self.pop.differentiation.mean()):.3f} · "
+            f"stem_frac={float((self.pop.differentiation < defaults.DIFF_STEM_LABEL).mean()):.3f}"
+        )
+        for ln in lines:
+            self.log(ln)
+        return {"reports": reports, "lines": lines, "applied": ok_cycles}
+
+    def rollback(self) -> list:
+        """Restore last-good snapshot (F009)."""
+        if self.last_good is None:
+            return ["refuse: no last-good snapshot — run /evolve first"]
+        self.last_good.restore(self.pop, self.harness)
+        if self.last_good.signal_hist:
+            self.signal_hist = {k: list(v) for k, v in self.last_good.signal_hist.items()}
+        msg = f"rollback ok · restored ({self.last_good.note or 'last-good'})"
+        self.log(msg)
+        return [msg]
 
     def save_named(self, name=None, progress=None) -> Path:
         """Persist session to MODEL/saves/*.model and refresh active tip."""

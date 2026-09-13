@@ -47,7 +47,7 @@ class Population:
         labels = []
         mix = self.mixture()
         for i, ti in enumerate(idx):
-            if self.differentiation[i] < 0.35:
+            if self.differentiation[i] < defaults.DIFF_STEM_LABEL:
                 labels.append("STEM")
             else:
                 labels.append(names[int(ti)])

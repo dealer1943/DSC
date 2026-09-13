@@ -21,3 +21,6 @@ Stubs first; implementation later. Each file states purpose and first-principles
 | F014 | `F014_checkpoint_save.md` | `/save` checkpoint bundles (`.model`) |
 | F015 | `F015_cell_grid_canvas.md` | 12×12 equal-circle grid for all 128 cells |
 | F016 | `F016_operator_tutorial.md` | Built-in tutorial (commands + train loop) |
+
+## S004 (2026-09-13)
+F004 light, F006 MVP, F009 light are **implemented** — see slice `SLICES/S004_evolution_mvp.md`.

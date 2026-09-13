@@ -40,3 +40,25 @@ TASK_NOISE = 0.05
 # Persistence
 SCHEMA_VERSION = 1
 CHECKPOINT_NAME = "checkpoint.npz"
+
+# Differentiation (F004 light)
+DIFF_EMA_ALPHA = 0.12
+DIFF_RISE = 0.08          # push toward 1 when utility stable/high
+DIFF_FALL = 0.10          # fall toward STEM when utility drops
+DIFF_STABILITY_EPS = 0.02 # |Δu| below this counts as stable
+DIFF_STEM_LABEL = 0.35    # UI STEM label threshold (cells.py)
+
+# Evolution (F006)
+EVOLVE_TOP_K = 16                 # elites kept / cloned from
+EVOLVE_REPLACE_FRAC = 0.25        # fraction of slots replaced per cycle
+EVOLVE_MUTATE_SIGMA = 0.05        # Gaussian noise on params of clones
+EVOLVE_TYPE_MUTATE_RATE = 0.05    # rare gate-logit nudge probability per clone
+EVOLVE_TYPE_MUTATE_SIGMA = 0.35
+EVOLVE_DEFAULT_CYCLES = 1
+EVOLVE_MAX_CYCLES = 32
+
+# Stability / rollback (F009 light)
+ROLLBACK_UTIL_CLIFF = 0.45        # mean utility drop fraction vs pre-cycle → fail
+ROLLBACK_FOOTPRINT_MIN = 1e-4     # near-zero floor only (DSC activity is often ~0.01–0.05)
+ROLLBACK_FOOTPRINT_REL = 0.20     # activity mean must stay ≥ this × pre-cycle
+

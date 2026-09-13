@@ -8,12 +8,12 @@
 
 | Field | Value |
 |--------|--------|
-| Phase | MVP v0 checked in — runtime + UI; evolution next |
-| Last completed slice | S001 + MVP five + F013–F015 (/save, progress, cell grid) |
+| Phase | S004 evolve MVP (F004/F006/F009 light) |
+| Last completed slice | S004 evolution MVP |
 | Prior completed | `S000` continuity scaffold |
-| Active slice | none (post check-in) |
-| Next | F004 differentiation → F006 evolution → F007/F008 prune → F009 rollback |
-| Code | `dsc/` + `UI/` + `MODEL/active` tip (`r1-n128-e1276`); FlyWire data local-only |
+| Active slice | none (S004 just landed) |
+| Next | F007 latent prune → F008 absorption; harden B006/B009 |
+| Code | `dsc/` + evolve/differentiation; UI `/evolve` `/rollback`; MODEL/active tip |
 | Blockers | None |
 
 ## What exists

@@ -2,8 +2,8 @@
   "schema": 1,
   "kind": "dsc_model_bundle",
   "revision": "r1-n128-e1276",
-  "updated_utc": "2026-09-13T20:34:16Z",
-  "created_utc": "2026-09-13T20:34:16Z",
+  "updated_utc": "2026-09-13T21:22:12Z",
+  "created_utc": "2026-09-13T21:22:12Z",
   "note": "MVP runtime: F001+F002+F003+F005+F010",
   "pairs_with_features": [
     "F001",
@@ -25,6 +25,6 @@
   },
   "checkpoint": "checkpoint.npz",
   "harness": "harness.json",
-  "display_name": "dsc_20260913_203416.model",
-  "saved_utc": "2026-09-13T20:34:16Z"
+  "display_name": "dsc_20260913_212212.model",
+  "saved_utc": "2026-09-13T21:22:12Z"
 }

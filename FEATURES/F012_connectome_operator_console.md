@@ -83,9 +83,9 @@ Shared view-model fields (minimum):
 | `/focus <id|neuropil|type>` | canvas focus | ✓ | ✓ |
 | `/signal <name>` | pin chart series | ✓ | ✓ (graph stats) |
 | `/tick [n]` | advance DSC n steps | ✓ | refuse / no-op |
-| `/evolve [n]` | run evolution cycles | ✓ | refuse |
+| `/evolve [n]` | evolution cycles (F006+F009) | ✓ | refuse |
 | `/bench <id>` | run named benchmark | ✓ | topology-only subset |
-| `/rollback` | request last good | ✓ | refuse |
+| `/rollback` | restore pre-/evolve snapshot (F009) | ✓ | refuse |
 | `/export <png|log>` | capture for sharing | ✓ | ✓ |
 | `/clear` | clear terminal | ✓ | ✓ |
 
