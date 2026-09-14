@@ -12,3 +12,6 @@ Stress F007/F008 on preferential (+ hub-aware) vs FlyWire-adj at N=512 with aggr
 
 ## Eval
 `tools.flywire_stress --dsc-family preferential --prune-stress --experiment F024_exp4_prune_coverage`
+
+## Fix (2026-09-14)
+Hub-aware absorb: neighbor bonus, hub penalty, wider absorb set on sparse graphs. Substrate threaded into `run_cycle`.

@@ -84,3 +84,7 @@ EVOLVE_CROSSOVER_ALPHA = 0.5   # mix weight parent_a vs parent_b (jittered)
 # Message passing (F023)
 HUB_AWARE = True              # damp high out-degree sources; log in-degree normalize
 HUB_OUT_EXP = 0.5             # divide source msgs by out_deg**exp
+
+# Sparse message passing (F026)
+SPARSE_GATHER = True          # use edge-list gather when density is low
+SPARSE_DENSITY_MAX = 0.085    # above this, dense einsum is fine

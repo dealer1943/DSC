@@ -102,18 +102,33 @@ def step_population(
     inject = np.tanh(inp) * 0.5
     A = sub.adj.astype(np.float64)
     h = np.nan_to_num(pop.hidden, nan=0.0, posinf=0.0, neginf=0.0)
-    if getattr(defaults, "HUB_AWARE", False):
-        # F023: damp loud senders; softer receiver normalize on hubs
-        out_deg = np.clip(A.sum(axis=1), 1.0, None)
+    use_sparse = bool(getattr(defaults, "SPARSE_GATHER", False)) and float(sub.density) <= float(
+        getattr(defaults, "SPARSE_DENSITY_MAX", 0.085)
+    )
+    hub = bool(getattr(defaults, "HUB_AWARE", False))
+    in_deg = np.clip(A.sum(axis=0), 1.0, None)
+    out_deg = np.clip(A.sum(axis=1), 1.0, None)
+    if use_sparse:
+        src, dst = sub.edge_index()  # A[src,dst]=1 ⇒ src→dst; einsum used A[j,i]=src→dst
+        # align with einsum "ji": j=src, i=dst
+        messages = np.zeros_like(h)
+        if len(src):
+            if hub:
+                exp = float(getattr(defaults, "HUB_OUT_EXP", 0.5))
+                w = (out_deg[src] ** exp) ** -1.0
+                np.add.at(messages, dst, h[src] * w[:, None])
+                messages = messages / np.log1p(in_deg)[:, None]
+            else:
+                np.add.at(messages, dst, h[src])
+                messages = messages / in_deg[:, None]
+    elif hub:
         exp = float(getattr(defaults, "HUB_OUT_EXP", 0.5))
         A_eff = A / (out_deg[:, None] ** exp)
         messages = np.einsum("ji,jh->ih", A_eff, h)
-        in_deg = np.clip(A.sum(axis=0), 1.0, None)[:, None]
-        messages = messages / np.log1p(in_deg)
+        messages = messages / np.log1p(in_deg)[:, None]
     else:
-        messages = np.einsum("ji,jh->ih", A, h)  # gather from sources
-        deg = np.clip(A.sum(axis=0), 1.0, None)[:, None]
-        messages = messages / deg
+        messages = np.einsum("ji,jh->ih", A, h)
+        messages = messages / in_deg[:, None]
     base = np.tanh(np.nan_to_num(messages + pop.bias + inject))
 
     # per-type responses

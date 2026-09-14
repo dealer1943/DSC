@@ -1,5 +1,15 @@
 # DSC Handoff (read first)
 
+## Stack win 2026-09-14 — F024/F025/F026
+
+Best Profile D stack: `preferential_directed` + `HUB_AWARE` + hub-aware absorb + `SPARSE_GATHER`; stress defaults lag=2/noise=0.20 (`--easy-harness` to opt out).
+
+- F024b prune-stress: **4–2 DSC** (was 5–1 fly) — `stressD_20260914T013207Z_n512_GNG_preferential`
+- F025b hard default stack: **6–0 DSC** — `stressD_20260914T013209Z_n512_GNG_preferential`
+- Ledger: `BENCHMARKS/runs/stress_ledger.jsonl`
+
+---
+
 ## Stress path 2026-09-14 — F021 Profile D
 
 - Feature: `FEATURES/F021_flywire_matched_stress.md`

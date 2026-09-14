@@ -42,3 +42,4 @@ Live FlyWire BRAIN MAP activity field — soma-projected energy with decay/bleed
 - F023 — Hub-aware message passing
 - F024 — Prune + coverage under degree skew
 - F025 — Harder temporal harness (stress mode)
+- F026 — Sparse message gather (tick parity)

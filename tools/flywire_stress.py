@@ -289,6 +289,8 @@ def main(argv=None) -> int:
                     help="Aggressive evolve/prune/absorb (F024)")
     ap.add_argument("--task-lag", type=int, default=None)
     ap.add_argument("--task-noise", type=float, default=None)
+    ap.add_argument("--easy-harness", action="store_true",
+                    help="Use lag-1/noise=0.05 instead of Profile D hard default")
     args = ap.parse_args(argv)
     report = run_stress(
         n=args.n,
@@ -301,8 +303,8 @@ def main(argv=None) -> int:
         dsc_family=args.dsc_family,
         experiment=args.experiment,
         prune_stress=args.prune_stress,
-        task_lag=args.task_lag,
-        task_noise=args.task_noise,
+        task_lag=(1 if args.easy_harness else (args.task_lag if args.task_lag is not None else 2)),
+        task_noise=(0.05 if args.easy_harness else (args.task_noise if args.task_noise is not None else 0.20)),
     )
     _append_ledger(report, Path(args.out) / "stress_ledger.jsonl")
     print(json.dumps({

@@ -31,6 +31,15 @@ class Substrate:
         denom = n * (n - 1)
         return float(self.n_edges / denom) if denom else 0.0
 
+    def edge_index(self) -> tuple:
+        """Cached (src, dst) nonzero coords for sparse message passing (F026)."""
+        key = id(self.adj)
+        cache = getattr(self, "_edge_cache", None)
+        if cache is None or cache[0] != key:
+            src, dst = np.nonzero(self.adj)
+            self._edge_cache = (key, src.astype(np.int32), dst.astype(np.int32))
+        return self._edge_cache[1], self._edge_cache[2]
+
 
 def _cap_density(adj: np.ndarray, rng: np.random.Generator, max_dens: float = 0.09) -> np.ndarray:
     n = adj.shape[0]

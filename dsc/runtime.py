@@ -163,7 +163,7 @@ class DscRuntime:
         # batch-level last-good before any cycle
         self.snapshot_good(note=f"pre-evolve/{n}")
         # last_good stays as pre-batch anchor so /rollback undoes this /evolve
-        reports, self.latent = run_cycles(self.pop, self.harness, self.latent, n, seed=seed)
+        reports, self.latent = run_cycles(self.pop, self.harness, self.latent, n, seed=seed, sub=self.sub)
         lines = []
         ok_cycles = 0
         for i, rep in enumerate(reports, 1):

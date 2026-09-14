@@ -213,6 +213,7 @@ def run_cycle(
     harness: TemporalHarness,
     latent: LatentPool,
     rng: np.random.Generator,
+    sub: Optional["Substrate"] = None,
 ) -> Tuple[CycleReport, LatentPool]:
     snap = PopSnapshot.capture(pop, harness, latent, note="pre-cycle")
     util_before = float(pop.utility.mean())
@@ -245,7 +246,7 @@ def run_cycle(
 
     for v in victims:
         # F008 absorb before overwrite
-        absorbers = absorb_coverage(pop, v, survivors)
+        absorbers = absorb_coverage(pop, v, survivors, sub=sub)
         if absorbers:
             absorbed_via.append((v, absorbers))
         # F007 archive into latent
@@ -337,11 +338,12 @@ def run_cycles(
     latent: LatentPool,
     n: int,
     seed: Optional[int] = None,
+    sub: Optional["Substrate"] = None,
 ) -> Tuple[List[CycleReport], LatentPool]:
     n = int(max(1, min(n, defaults.EVOLVE_MAX_CYCLES)))
     rng = np.random.default_rng(defaults.SEED + 99 if seed is None else seed)
     reports: List[CycleReport] = []
     for _ in range(n):
-        rep, latent = run_cycle(pop, harness, latent, rng)
+        rep, latent = run_cycle(pop, harness, latent, rng, sub=sub)
         reports.append(rep)
     return reports, latent

@@ -12,3 +12,6 @@ Widen the task gap on Profile D by raising lag/noise so structure and messaging 
 
 ## Eval
 `tools.flywire_stress --dsc-family preferential --task-lag 2 --task-noise 0.20 --experiment F025_exp5_hard_harness`
+
+## Default (2026-09-14)
+Profile D stress defaults to lag=2 / noise=0.20; pass `--easy-harness` for lag-1 baseline.
