@@ -35,15 +35,20 @@ def _eval_runtime(rt, ticks: int, seed: int) -> dict[str, Any]:
     rt.harness.reset(seed=seed)
     errs: list[float] = []
     walls: list[float] = []
+    covs: list[float] = []
+    out: dict[str, Any] = {}
     for _ in range(ticks):
         t0 = time.perf_counter()
         out = rt.tick(1)
         walls.append((time.perf_counter() - t0) * 1e6)
         errs.append(float(out.get("err", rt.harness.last_err)))
+        if out.get("coverage_mean") is not None:
+            covs.append(float(out["coverage_mean"]))
     task_error = float(np.mean(errs[len(errs) // 2 :])) if errs else 1.0
     tick_us = float(np.median(walls)) if walls else 0.0
     proxy = 1.0 / (1.0 + task_error)
     n_edges = int(rt.sub.n_edges)
+    latent_n = len(getattr(getattr(rt, "latent", None), "entries", []) or [])
     return {
         "task_error": task_error,
         "tick_wall_us": tick_us,
@@ -51,7 +56,9 @@ def _eval_runtime(rt, ticks: int, seed: int) -> dict[str, Any]:
         "n_edges": n_edges,
         "density": float(rt.sub.density),
         "utility_mean": float(np.mean(rt.pop.utility)),
+        "coverage_mean": float(np.mean(covs)) if covs else float(out.get("coverage_mean") or 0.0),
         "stem_frac": float(out.get("stem_frac", 0.0)) if errs else None,
+        "latent_n": latent_n,
         "task_utility_proxy": proxy,
         "E_edge": proxy / max(n_edges, 1),
         "E_tick": proxy / max(tick_us, 1.0),
@@ -76,6 +83,7 @@ def _gaps(dsc: dict, fly: dict) -> list[dict[str, Any]]:
         ("E_tick", True, "Optimize message passing / hub handling", "DSC cheaper/tick — keep while raising task"),
         ("E_edge", True, "More signal per edge: prune+coverage under skew", "Good edge efficiency — test at larger N"),
         ("utility_mean", True, "Retune F005 / type emergence for hubs", "Utility OK on this family"),
+        ("coverage_mean", True, "Coverage collapse under prune/skew — strengthen F008 absorb", "Coverage holding"),
         ("tick_wall_us", False, "Sparse kernels on hubs", "DSC already fast"),
     ):
         a, b = dsc[metric], fly[metric]
@@ -99,9 +107,19 @@ def run_stress(
     out_dir: Path | None = None,
     dsc_family: str = "erdos_renyi_directed",
     experiment: str = "baseline",
+    prune_stress: bool = False,
+    task_lag: int | None = None,
+    task_noise: float | None = None,
 ) -> dict[str, Any]:
+    from dsc import defaults
     from dsc.substrate import generate_substrate
     from tools.flywire_subgraph.extract import extract_subgraph, save_subgraph
+
+    # optional temporary default overrides (restored in finally)
+    _saved = {}
+    def _override(name, val):
+        _saved[name] = getattr(defaults, name)
+        setattr(defaults, name, val)
 
     out_dir = Path(out_dir or "BENCHMARKS/runs")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -122,15 +140,38 @@ def run_stress(
     rt_er = _build_on_adj(dsc_sub.adj, dsc_sub.meta, seed=seed)
     rt_fly = _build_on_adj(bundle["adj"], bundle["meta"], seed=seed)
 
-    for rt in (rt_er, rt_fly):
-        rt.harness.reset(seed=seed)
-        for _ in range(warm):
-            rt.tick(1)
-        if evolve > 0:
-            rt.evolve(n=evolve, seed=seed)
+    try:
+        if prune_stress:
+            _override("PRUNE_FAIL_STREAK", 3)
+            _override("PRUNE_UTIL_QUANTILE", 0.40)
+            _override("EVOLVE_REPLACE_FRAC", 0.35)
+            _override("ABSORB_BLEND", 0.45)
+            if evolve < 8:
+                evolve = 8
+        if task_lag is not None:
+            _override("TASK_LAG", int(task_lag))
+        if task_noise is not None:
+            _override("TASK_NOISE", float(task_noise))
 
-    dsc_m = _eval_runtime(rt_er, ticks=ticks, seed=seed + 1)
-    fly_m = _eval_runtime(rt_fly, ticks=ticks, seed=seed + 1)
+        for rt in (rt_er, rt_fly):
+            # rebuild harness with possibly overridden lag/noise
+            from dsc.harness import TemporalHarness
+            rt.harness = TemporalHarness(
+                seed=seed,
+                lag=int(defaults.TASK_LAG),
+                noise=float(defaults.TASK_NOISE),
+            )
+            rt.harness.reset(seed=seed)
+            for _ in range(warm):
+                rt.tick(1)
+            if evolve > 0:
+                rt.evolve(n=evolve, seed=seed)
+
+        dsc_m = _eval_runtime(rt_er, ticks=ticks, seed=seed + 1)
+        fly_m = _eval_runtime(rt_fly, ticks=ticks, seed=seed + 1)
+    finally:
+        for k, v in _saved.items():
+            setattr(defaults, k, v)
     gaps = _gaps(dsc_m, fly_m)
     fly_wins = sum(1 for g in gaps if g["winner"] == "fly_adj")
     dsc_wins = sum(1 for g in gaps if g["winner"] == "dsc")
@@ -150,6 +191,9 @@ def run_stress(
         "ticks": ticks,
         "dsc_family": dsc_sub.meta.get("family", dsc_family),
         "hub_aware": bool(__import__("dsc.defaults", fromlist=["HUB_AWARE"]).HUB_AWARE),
+        "prune_stress": bool(prune_stress),
+        "task_lag": int(task_lag) if task_lag is not None else 1,
+        "task_noise": float(task_noise) if task_noise is not None else 0.05,
         "subgraph": sub_path.name,
         "dsc": dsc_m,
         "er": dsc_m,  # backward-compatible alias
@@ -187,7 +231,7 @@ def _render_md(report: dict) -> str:
         "|--------|-----|-------------|",
     ]
     dsc, fly = report.get("dsc") or report.get("er") or {}, report["fly_adj"]
-    for k in ("n_nodes", "n_edges", "density", "task_error", "tick_wall_us", "utility_mean", "E_edge", "E_tick"):
+    for k in ("n_nodes", "n_edges", "density", "task_error", "tick_wall_us", "utility_mean", "coverage_mean", "latent_n", "E_edge", "E_tick"):
         lines.append(f"| `{k}` | {dsc.get(k)} | {fly.get(k)} |")
     lines += ["", "## Gaps → development targets", "", "| metric | winner | hint |", "|--------|--------|------|"]
     for g in report["gaps"]:
@@ -210,6 +254,11 @@ def _append_ledger(report: dict[str, Any], path: Path) -> None:
         "neuropil": report.get("neuropil"),
         "dsc_family": report.get("dsc_family"),
         "hub_aware": report.get("hub_aware"),
+        "prune_stress": report.get("prune_stress"),
+        "task_lag": report.get("task_lag"),
+        "task_noise": report.get("task_noise"),
+        "dsc_coverage": dsc.get("coverage_mean"),
+        "fly_coverage": (report.get("fly_adj") or {}).get("coverage_mean"),
         "fly_wins": (report.get("scoreboard") or {}).get("fly_adj_wins"),
         "dsc_wins": (report.get("scoreboard") or {}).get("dsc_wins"),
         "dsc_task_error": dsc.get("task_error"),
@@ -236,6 +285,10 @@ def main(argv=None) -> int:
     ap.add_argument("--dsc-family", type=str, default="erdos_renyi_directed",
                     help="er|preferential|modular (F022)")
     ap.add_argument("--experiment", type=str, default="baseline")
+    ap.add_argument("--prune-stress", action="store_true",
+                    help="Aggressive evolve/prune/absorb (F024)")
+    ap.add_argument("--task-lag", type=int, default=None)
+    ap.add_argument("--task-noise", type=float, default=None)
     args = ap.parse_args(argv)
     report = run_stress(
         n=args.n,
@@ -247,6 +300,9 @@ def main(argv=None) -> int:
         out_dir=args.out,
         dsc_family=args.dsc_family,
         experiment=args.experiment,
+        prune_stress=args.prune_stress,
+        task_lag=args.task_lag,
+        task_noise=args.task_noise,
     )
     _append_ledger(report, Path(args.out) / "stress_ledger.jsonl")
     print(json.dumps({

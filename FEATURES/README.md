@@ -40,3 +40,5 @@ Live FlyWire BRAIN MAP activity field — soma-projected energy with decay/bleed
 - F021 — FlyWire matched-topology stress (Profile D path)
 - F022 — Structured substrate families (preferential / modular)
 - F023 — Hub-aware message passing
+- F024 — Prune + coverage under degree skew
+- F025 — Harder temporal harness (stress mode)
