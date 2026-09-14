@@ -124,7 +124,7 @@ class FlyWirePackAdapter:
             self._log(f"activity field unavailable: {exc}")
         return [
             f"FLYWIRE loaded · {n:,} edges · pack {pack_label(self.pack_dir)}",
-            "tip: BRAIN MAP live sensory — optic+AL+sense on · /stim · /pulse MB · /rest",
+            "tip: BRAIN MAP live — sensory already on · /stim kicks louder · /rest then /stim for cold start · /pulse MB",
         ]
 
     def _filtered(self) -> pd.DataFrame:
@@ -318,35 +318,63 @@ class FlyWirePackAdapter:
             self._events.clear()
             return ["terminal cleared"]
         if verb == "stim":
-            if self._field is None:
-                return ["refuse: activity field not loaded"]
-            regions = list(args) if args else ["optic", "AL"]
-            strength = 0.35
+            if self._field is None or not self._activity.loaded:
+                return ["refuse: activity field not loaded — /load flywire first"]
+            strength = 0.55
+            regions: list = []
             if args:
                 try:
                     strength = float(args[-1])
-                    regions = args[:-1] or ["optic", "AL"]
+                    regions = list(args[:-1])
                 except ValueError:
                     regions = list(args)
-            ids = self._activity.stim(regions, strength=strength)
+            if not regions:
+                regions = ["optic", "AL", "SENSE"]
+            already = bool(self._stim_on and self._activity.drive)
+            try:
+                ids = self._activity.stim(regions, strength=strength)
+            except ValueError as exc:
+                return [f"refuse: {exc}"]
             self._stim_on = True
-            self._log(f"stim → {ids} strength={strength:.2f}")
-            return [f"stim on · regions={ids} · strength={strength:.2f}"]
+            # force an immediate tick so the map jumps this frame
+            indices = self._activity.tick()
+            self._field.tick(indices)
+            self._status["spikes_tick"] = self._activity.last_n_spikes
+            self._status["stim"] = "on"
+            note = "boost" if already else "on"
+            self._log(f"stim {note} → {ids} strength={strength:.2f}")
+            return [
+                f"stim {note} · regions={ids} · strength={strength:.2f}",
+                ("(sensory was already driving — kicked the field louder; "
+                 "/rest then /stim to see a cold start)")
+                if already
+                else "(watch BRAIN MAP — optic/AL/sense glyphs should brighten)",
+            ]
         if verb == "pulse":
-            if self._field is None:
-                return ["refuse: activity field not loaded"]
+            if self._field is None or not self._activity.loaded:
+                return ["refuse: activity field not loaded — /load flywire first"]
             region = args[0] if args else "optic"
-            strength = float(args[1]) if len(args) > 1 else 0.55
-            ids = self._activity.pulse(region, strength=strength)
+            strength = float(args[1]) if len(args) > 1 else 0.7
+            try:
+                ids = self._activity.pulse(region, strength=strength)
+            except ValueError as exc:
+                return [f"refuse: {exc}"]
             self._stim_on = True
-            return [f"pulse {region} · regions={ids} · strength={strength:.2f}"]
+            indices = self._activity.tick()
+            self._field.tick(indices)
+            self._status["spikes_tick"] = self._activity.last_n_spikes
+            self._status["stim"] = "on"
+            return [f"pulse {region} · regions={ids} · strength={strength:.2f} · watch the map"]
         if verb == "rest":
-            if self._field is None:
+            if self._field is None or not self._activity.loaded:
                 return ["refuse: activity field not loaded"]
             self._activity.rest()
+            self._field.reset()
             self._stim_on = False
-            self._log("rest — drive cleared; field decaying")
-            return ["rest · drive cleared · watch the map decay"]
+            self._status["stim"] = "off"
+            self._status["spikes_tick"] = 0
+            self._log("rest — drive+recruit cleared")
+            return ["rest · drive cleared · map should go quiet (then /stim to wake)"]
         if verb in ("tick", "evolve", "bench", "rollback", "save"):
             return [f"refuse: /{verb} is DSC-only — FLYWIRE is comparison (+ live map)"]
         return [f"unknown verb /{verb}"]

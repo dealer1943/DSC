@@ -99,12 +99,25 @@ class FlyActivityEngine:
         return out
 
     def rest(self) -> None:
+        """Hard quiet — clear drive and recruitment so the atlas can decay."""
         self.drive.clear()
-        self.recruit *= 0.5
+        self.recruit[:] = 0.0
+        self._ema *= 0.15
 
-    def stim(self, regions: Sequence[str], strength: float = 0.35) -> List[str]:
-        """Enable drive on named regions (optic, AL, taste, …)."""
+    def stim(
+        self,
+        regions: Sequence[str],
+        strength: float = 0.35,
+        *,
+        allow_default: bool = True,
+    ) -> List[str]:
+        """Enable drive on named regions (optic, AL, taste, …).
+
+        Unknown names raise ValueError (caller should surface them) instead of
+        silently falling back — that made /stim ME_R look like a no-op.
+        """
         hit: Set[int] = set()
+        unknown: List[str] = []
         for raw in regions:
             key = raw.strip().upper()
             if not key:
@@ -114,12 +127,31 @@ class FlyActivityEngine:
                 hit |= ids
             elif key.isdigit():
                 hit.add(int(key))
+            else:
+                unknown.append(raw)
+        if unknown:
+            known = ", ".join(sorted({k for k in REGION_ALIASES if len(k) > 1}))
+            raise ValueError(f"unknown region(s) {unknown} — try: {known}")
         if not hit:
-            # default sensory: both optics + antennal
-            hit = {1, 2, 8}
+            if not allow_default:
+                raise ValueError("no regions")
+            # default sensory: both optics + antennal + sense
+            hit = {1, 2, 5, 8}
+        strength = float(np.clip(strength, 0.05, 0.95))
         for rid in hit:
-            self.drive[rid] = float(np.clip(strength, 0.05, 0.95))
-        return [LABEL for LABEL in (str(r) for r in sorted(hit))]
+            # never accidentally dim an already-louder drive on bare re-stim
+            prev = float(self.drive.get(rid, 0.0))
+            self.drive[rid] = max(prev, strength)
+            # onset kick so the atlas visibly jumps even if drive was already on
+            pool = self.by_region.get(rid)
+            if pool is not None and len(pool):
+                n_kick = int(min(len(pool), max(24, strength * 120)))
+                choose = self.rng.choice(pool, size=n_kick, replace=False)
+                self.recruit[choose] = np.clip(self.recruit[choose] + 0.55, 0.0, 1.0)
+                nbr = self.knn[choose].ravel() if self.knn is not None else []
+                if len(nbr):
+                    self.recruit[nbr] = np.clip(self.recruit[nbr] + 0.25, 0.0, 1.0)
+        return [str(r) for r in sorted(hit)]
 
     def pulse(self, region: str, strength: float = 0.55) -> List[str]:
         self.drive.clear()
