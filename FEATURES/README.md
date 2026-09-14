@@ -44,3 +44,4 @@ Live FlyWire BRAIN MAP activity field — soma-projected energy with decay/bleed
 - F025 — Harder temporal harness (stress mode)
 - F026 — Sparse message gather (tick parity)
 - F027 — Laminar substrate (optic / ME–LO prior)
+- F028 — Procedural sheet+hub substrate (anti-overfit)

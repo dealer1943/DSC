@@ -9,7 +9,7 @@ import numpy as np
 from dsc import defaults
 from dsc.progress import ProgressCb, emit
 
-FAMILIES = ("erdos_renyi_directed", "preferential_directed", "modular_directed", "laminar_directed")
+FAMILIES = ("erdos_renyi_directed", "preferential_directed", "modular_directed", "laminar_directed", "sheet_hub_directed")
 
 
 @dataclass
@@ -207,6 +207,123 @@ def _laminar(n: int, target_edges: int, rng: np.random.Generator, n_layers: int 
 
 
 
+def _sheet_hub(
+    n: int,
+    target_edges: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Procedural sheet + hub prior (F028) — one rule, scale with N/edges only.
+
+    Layman (state-trading): one order-book microstructure rule that still works
+    when the venue changes. Geometry + preferential attachment; no neuropil-tuned
+    magic numbers copied from FlyWire ME_R.
+
+    Tech:
+      - Embed nodes on a cylinder (angle θ, height z) from index alone.
+      - Grow directed edges with spatial kernel × mild preferential (α=β=1).
+      - Kernel length-scales from N only (σ_θ, σ_z ~ 1/√L, L~√N/2).
+      - Light reciprocal completion with p_recip from density, not from fly %.
+      - Fill exactly to target_edges; then density cap.
+    """
+    adj = np.zeros((n, n), dtype=np.uint8)
+    # cylinder embedding from index — procedural, not atlas-registered
+    n_layers = int(np.clip(round(np.sqrt(n) / 2), 4, 16))
+    # contiguous blocks ≈ sheets; within-sheet angle from local index
+    layer = np.empty(n, dtype=np.int32)
+    theta = np.empty(n, dtype=np.float64)
+    z = np.empty(n, dtype=np.float64)
+    chunks = np.array_split(np.arange(n), n_layers)
+    for li, idxs in enumerate(chunks):
+        layer[idxs] = li
+        z[idxs] = li / max(1, n_layers - 1)  # [0,1]
+        m = len(idxs)
+        theta[idxs] = (np.arange(m) / max(1, m)) * (2.0 * np.pi)
+
+    # length scales from geometry only
+    sigma_z = 1.0 / max(1.0, np.sqrt(n_layers))
+    sigma_theta = 2.0 * np.pi / max(4.0, np.sqrt(max(n // n_layers, 4)))
+    # reciprocity from expected degree, not from a measured fly fraction
+    mean_deg = max(1.0, target_edges / max(1, n))
+    p_recip = float(1.0 / (1.0 + mean_deg))  # denser → less forced reciprocity
+    p_recip = float(np.clip(p_recip, 0.05, 0.35))
+
+    out_d = np.zeros(n, dtype=np.float64)
+    in_d = np.zeros(n, dtype=np.float64)
+    placed = 0
+    guard = 0
+    max_guard = max(target_edges * 80, 10_000)
+
+    # precompute for speed: sample candidates
+    while placed < target_edges and guard < max_guard:
+        guard += 1
+        # source ~ (1 + out)^1
+        w_src = 1.0 + out_d
+        w_src = w_src / w_src.sum()
+        s = int(rng.choice(n, p=w_src))
+
+        # targets: spatial kernel × (1+in)
+        dtheta = np.abs(theta - theta[s])
+        dtheta = np.minimum(dtheta, 2.0 * np.pi - dtheta)
+        dz = np.abs(z - z[s])
+        spat = np.exp(-dtheta / sigma_theta) * np.exp(-dz / sigma_z)
+        spat[s] = 0.0
+        # forbid existing outs
+        spat[adj[s] > 0] = 0.0
+        if spat.sum() <= 0:
+            continue
+        w_tgt = spat * (1.0 + in_d)
+        w_tgt = w_tgt / w_tgt.sum()
+        t = int(rng.choice(n, p=w_tgt))
+        if s == t or adj[s, t]:
+            continue
+        adj[s, t] = 1
+        out_d[s] += 1
+        in_d[t] += 1
+        placed += 1
+        # procedural reciprocity (density-scaled), not ME_R-fitted 0.30
+        if (not adj[t, s]) and rng.random() < p_recip:
+            adj[t, s] = 1
+            out_d[t] += 1
+            in_d[s] += 1
+            placed += 1
+            if placed >= target_edges:
+                break
+
+    # if under budget (rejection), fill with same kernel greedily
+    guard = 0
+    while int(adj.sum()) < target_edges and guard < target_edges * 50:
+        guard += 1
+        s = int(rng.integers(0, n))
+        dtheta = np.abs(theta - theta[s])
+        dtheta = np.minimum(dtheta, 2.0 * np.pi - dtheta)
+        dz = np.abs(z - z[s])
+        spat = np.exp(-dtheta / sigma_theta) * np.exp(-dz / sigma_z)
+        spat[s] = 0.0
+        spat[adj[s] > 0] = 0.0
+        if spat.sum() <= 0:
+            # fall back anywhere
+            t = int(rng.integers(0, n))
+            if s != t and not adj[s, t]:
+                adj[s, t] = 1
+            continue
+        w = spat * (1.0 + in_d)
+        w = w / w.sum()
+        t = int(rng.choice(n, p=w))
+        if s != t and not adj[s, t]:
+            adj[s, t] = 1
+            out_d[s] += 1
+            in_d[t] += 1
+
+    # trim if reciprocity overshot
+    while int(adj.sum()) > target_edges:
+        rows, cols = np.nonzero(adj)
+        k = int(rng.integers(0, len(rows)))
+        adj[rows[k], cols[k]] = 0
+
+    return _cap_density(adj, rng)
+
+
+
 def generate_substrate(
     n: int = defaults.N_NODES,
     p: float = defaults.EDGE_PROB,
@@ -222,6 +339,7 @@ def generate_substrate(
       - preferential_directed (heavy-tailed hubs)
       - modular_directed (block / neuropil-ish modules)
       - laminar_directed (stacked sheets — optic/ME-LO prior)
+      - sheet_hub_directed (F028 procedural cylinder + preferential; anti-overfit)
     """
     emit(progress, 0.05, "substrate: seeding RNG")
     rng = np.random.default_rng(seed)
@@ -238,6 +356,9 @@ def generate_substrate(
         "laminar": "laminar_directed",
         "optic": "laminar_directed",
         "sheets": "laminar_directed",
+        "sheet_hub": "sheet_hub_directed",
+        "hybrid": "sheet_hub_directed",
+        "sheet_pa": "sheet_hub_directed",
     }
     fam = aliases.get(fam, fam)
     if fam not in (
@@ -245,6 +366,7 @@ def generate_substrate(
         "preferential_directed",
         "modular_directed",
         "laminar_directed",
+        "sheet_hub_directed",
     ):
         raise ValueError(f"unknown substrate family: {family}")
 
@@ -259,8 +381,10 @@ def generate_substrate(
         adj = _preferential(n, int(target_edges), rng)
     elif fam == "modular_directed":
         adj = _modular(n, int(target_edges), rng)
-    else:
+    elif fam == "laminar_directed":
         adj = _laminar(n, int(target_edges), rng)
+    else:
+        adj = _sheet_hub(n, int(target_edges), rng)
 
     emit(progress, 0.7, "substrate: enforcing invariants")
     dens = float(adj.sum() / max(1, n * (n - 1)))
@@ -274,8 +398,9 @@ def generate_substrate(
         "density": dens,
         "n_edges": int(adj.sum()),
     }
-    if fam == "laminar_directed":
+    if fam in ("laminar_directed", "sheet_hub_directed"):
         meta["n_layers"] = int(np.clip(round(np.sqrt(n) / 2), 4, 16))
+        meta["procedural"] = fam == "sheet_hub_directed"
     emit(progress, 1.0, f"substrate: done · edges={meta['n_edges']} density={dens:.4f}")
     return Substrate(adj=adj, meta=meta)
 
