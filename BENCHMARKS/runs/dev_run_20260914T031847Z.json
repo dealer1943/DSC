@@ -1,0 +1,69 @@
+{
+  "protocol": "dev_run_v0",
+  "utc": "2026-09-14T03:18:48Z",
+  "seed": 42,
+  "checkpoint": "dsc_dev_20260914T031847Z",
+  "saved": "dsc_dev_20260914T031847Z.model",
+  "task_error_eval": 0.00826526979765725,
+  "disk_before": 95535,
+  "disk_after": 101691,
+  "gates": {
+    "G1_task": true,
+    "G2_evolve": true,
+    "G3_footprint": true,
+    "G4_honesty": true,
+    "G5_dynamics": true
+  },
+  "pass": true,
+  "b006": {
+    "bench": "B006",
+    "utc": "2026-09-14T03:18:47Z",
+    "seed": 42,
+    "cycles": 2,
+    "post_ticks": 16,
+    "mutated_active": false,
+    "delta": 0.0001,
+    "before": {
+      "utility_mean": 0.17587129398452497,
+      "typed_frac": 1.0,
+      "elite_utility_mean": 0.32550229519407337
+    },
+    "after": {
+      "utility_mean": 0.20968998369204264,
+      "typed_frac": 1.0,
+      "elite_utility_mean": 0.34220898708045305
+    },
+    "noop": false,
+    "pass": true,
+    "rule": "(mean OR elite utility \u2191 by delta) AND typed non-decrease; fail on no-op; post-tick re-score"
+  },
+  "b010": {
+    "bench": "B010",
+    "utc": "2026-09-14T03:18:47Z",
+    "seed": 42,
+    "ticks": 64,
+    "mutated_active": false,
+    "task_error": 0.0014275792600874607,
+    "task_utility_proxy": 0.9985744558172222,
+    "active_cells": 128,
+    "dormant_proxy_latent": 64,
+    "disk_bytes": 101691,
+    "n_edges": 1276,
+    "activation_sparsity": 0.0,
+    "E_disk": 9.81969354040399e-06,
+    "E_edge": 0.0007825818619257227,
+    "pass": true,
+    "rule": "task_error<=0.05 (aligned with F020 G1)"
+  },
+  "b016_run_id": "B016_20260914T031848Z_s42",
+  "b016_pass": false,
+  "b016_pass_kind": "static_null_demo",
+  "params": {
+    "t_warm": 64,
+    "e1": 3,
+    "t_train": 256,
+    "e2": 2,
+    "t_eval": 64,
+    "skip_b016": false
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "bench": "B016",
+  "schema": 1,
+  "protocol": "b016_v0",
+  "utc": "2026-09-14T03:18:47Z",
+  "run_id": "B016_20260914T031847Z_s42",
+  "goal": "efficiency_vs_flywire",
+  "profiles_run": [
+    "A",
+    "B",
+    "C",
+    "E"
+  ],
+  "seed": 42,
+  "ticks": 64,
+  "dsc": {
+    "revision": "r1-n128-e1276",
+    "display": "active",
+    "metrics": {
+      "n_nodes": 128,
+      "n_edges": 1276,
+      "density": 0.07849409448818898,
+      "degree_mean": 19.9375,
+      "degree_median": 20.0,
+      "degree_max": 30.0,
+      "disk_bytes": 95535,
+      "disk_profile": "active_checkpoint",
+      "dynamics": true,
+      "revision": "r1-n128-e1276",
+      "load_wall_s": 0.044868792,
+      "utility_mean": 0.15294789142724458,
+      "coverage_mean": 0.43027613080571203,
+      "novelty_mean": 0.3570719027406112,
+      "cost_mean": 0.43740043182645516,
+      "stem_frac": 0.0,
+      "type_entropy": 1.543723095935306,
+      "n_neuropils": null,
+      "mean_syn_count": null,
+      "task_id": "temporal_lag1_mse",
+      "task_error": 0.0015803617783935451,
+      "tick_wall_us": 357.66649999996457,
+      "edges_touched_per_tick": 1276.0,
+      "activation_l1": 0.0155425073084435,
+      "sample_hz_sustainable": 2795.900650466563,
+      "activity_mean": 0.013412067901673434,
+      "ticks": 64,
+      "seed": 42
+    },
+    "E": {
+      "E_disk": 1.0450851853500423e-05,
+      "E_edge": 0.0007824624857556135,
+      "E_tick": 0.0027914890878073897,
+      "E_touch": 0.0007824624857556135
+    }
+  },
+  "flywire": {
+    "pack": "flywire_v783",
+    "profile_edges": "proofread_connections",
+    "metrics": {
+      "n_nodes": 0,
+      "n_edges": 16847997,
+      "density": null,
+      "degree_mean": null,
+      "degree_median": null,
+      "degree_max": null,
+      "disk_bytes": 852022274,
+      "disk_profile": "edges_only",
+      "dynamics": false,
+      "pack": "flywire_v783",
+      "profile_edges": "proofread_connections",
+      "load_wall_s": 0.6370726250000001,
+      "utility_mean": null,
+      "stem_frac": null,
+      "type_entropy": null,
+      "n_neuropils": null,
+      "mean_syn_count": 3.23438578485027,
+      "task_error": null,
+      "task_id": null,
+      "tick_wall_us": null,
+      "edges_touched_per_tick": null,
+      "activation_l1": null,
+      "sample_hz_sustainable": null,
+      "task_utility_proxy": 0.0
+    },
+    "E": {
+      "E_disk": 0.0,
+      "E_edge": 0.0,
+      "E_tick": 0.0,
+      "E_touch": 0.0
+    }
+  },
+  "profiles": {
+    "A": {
+      "name": "artifact_footprint",
+      "dsc": {
+        "n_nodes": 128,
+        "n_edges": 1276,
+        "density": 0.07849409448818898,
+        "degree_mean": 19.9375,
+        "degree_median": 20.0,
+        "degree_max": 30.0,
+        "disk_bytes": 95535,
+        "disk_profile": "active_checkpoint",
+        "stem_frac": 0.2109375,
+        "type_entropy": 1.543723095935306
+      },
+      "flywire": {
+        "n_nodes": 0,
+        "n_edges": 16847997,
+        "density": null,
+        "degree_mean": null,
+        "degree_median": null,
+        "degree_max": null,
+        "disk_bytes": 852022274,
+        "disk_profile": "edges_only",
+        "mean_syn_count": 3.23438578485027,
+        "n_neuropils": null
+      }
+    },
+    "B": {
+      "name": "dsc_native_dynamics",
+      "task_id": "temporal_lag1_mse",
+      "task_error": 0.0015803617783935451,
+      "tick_wall_us": 357.66649999996457,
+      "edges_touched_per_tick": 1276.0,
+      "activation_l1": 0.0155425073084435,
+      "sample_hz_sustainable": 2795.900650466563,
+      "activity_mean": 0.013412067901673434,
+      "utility_mean": 0.15294789142724458,
+      "dynamics": true,
+      "ticks": 64,
+      "seed": 42,
+      "coverage_mean": 0.43027613080571203,
+      "novelty_mean": 0.3570719027406112,
+      "cost_mean": 0.43740043182645516,
+      "stem_frac": 0.0,
+      "E": {
+        "E_disk": 1.0450851853500423e-05,
+        "E_edge": 0.0007824624857556135,
+        "E_tick": 0.0027914890878073897,
+        "E_touch": 0.0007824624857556135
+      }
+    },
+    "C": {
+      "name": "flywire_static_null",
+      "dynamics": false,
+      "task_utility_proxy": 0.0,
+      "E": {
+        "E_disk": 0.0,
+        "E_edge": 0.0,
+        "E_tick": 0.0,
+        "E_touch": 0.0
+      },
+      "note": "anatomy_is_not_free_compute"
+    },
+    "E": {
+      "name": "operator_load",
+      "dsc_display": "active",
+      "flywire_display": "flywire_v783",
+      "dsc_load_wall_s": 0.04038050000000004,
+      "flywire_load_wall_s": 0.37485554199999993,
+      "path_safe": true
+    }
+  },
+  "comparisons": {
+    "E_disk_winner": "na_static_null",
+    "E_edge_winner": "na_static_null",
+    "E_tick_winner": "na_static_null",
+    "E_touch_winner": "na_static_null",
+    "dsc_E_wins": 0,
+    "static_null_demo_axes": 4,
+    "goal_two_of_four": false,
+    "null_opponent": true,
+    "dsc_proxy": 0.9984221318241628,
+    "proxy_min": 0.5,
+    "overclaim_warning": "E_* vs Profile C null is anatomy\u2260compute demo only; efficiency_vs_flywire pass requires Profile D / tasked FlyWire",
+    "claim_level": "static_null_asymmetry",
+    "pass_kind": "static_null_demo",
+    "static_null_demo_ok": true
+  },
+  "claim_level": "static_null_asymmetry",
+  "pass_kind": "static_null_demo",
+  "pass": false,
+  "notes": [
+    "pass_false_static_null_only_profile_D_required_for_goal"
+  ],
+  "exit_hint": 0
+}

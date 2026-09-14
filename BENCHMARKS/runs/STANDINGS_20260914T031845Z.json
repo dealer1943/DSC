@@ -1,0 +1,363 @@
+{
+  "stamp": "20260914T031845Z",
+  "started": "2026-09-14T03:18:45.873150+00:00",
+  "parts": [
+    {
+      "label": "B006_selection",
+      "argv": [
+        "--out",
+        "/Users/ai_agent_mar2026/Source/repos/DSC/BENCHMARKS/runs"
+      ],
+      "returncode": 0,
+      "seconds": 0.16,
+      "stdout_tail": "{\n  \"pass\": true,\n  \"json\": \"B006_20260914T031846Z.json\",\n  \"noop\": false,\n  \"utility_mean\": 0.19792271549295568,\n  \"typed_frac\": 1.0,\n  \"elite_utility_mean\": 0.3771910364217114\n}\n",
+      "stderr_tail": "",
+      "parsed": {
+        "pass": true,
+        "json": "B006_20260914T031846Z.json",
+        "noop": false,
+        "utility_mean": 0.19792271549295568,
+        "typed_frac": 1.0,
+        "elite_utility_mean": 0.3771910364217114
+      }
+    },
+    {
+      "label": "B010_task_footprint",
+      "argv": [
+        "--out",
+        "/Users/ai_agent_mar2026/Source/repos/DSC/BENCHMARKS/runs"
+      ],
+      "returncode": 0,
+      "seconds": 0.14,
+      "stdout_tail": "{\n  \"pass\": true,\n  \"json\": \"B010_20260914T031846Z.json\",\n  \"task_error\": 0.0015803617783935451\n}\n",
+      "stderr_tail": "",
+      "parsed": {
+        "pass": true,
+        "json": "B010_20260914T031846Z.json",
+        "task_error": 0.0015803617783935451
+      }
+    },
+    {
+      "label": "B016_efficiency",
+      "argv": [
+        "--out",
+        "/Users/ai_agent_mar2026/Source/repos/DSC/BENCHMARKS/runs",
+        "--seed",
+        "42",
+        "--ticks",
+        "64"
+      ],
+      "returncode": 0,
+      "seconds": 1.3,
+      "stdout_tail": "{\n  \"run_id\": \"B016_20260914T031847Z_s42\",\n  \"pass\": false,\n  \"pass_kind\": \"static_null_demo\",\n  \"claim_level\": \"static_null_asymmetry\",\n  \"json\": \"B016_20260914T031847Z_s42.json\",\n  \"md\": \"B016_20260914T031847Z_s42.md\",\n  \"comparisons\": {\n    \"E_disk_winner\": \"na_static_null\",\n    \"E_edge_winner\": \"na_static_null\",\n    \"E_tick_winner\": \"na_static_null\",\n    \"E_touch_winner\": \"na_static_null\",\n    \"dsc_E_wins\": 0,\n    \"static_null_demo_axes\": 4,\n    \"goal_two_of_four\": false,\n    \"null_opponent\": true,\n    \"dsc_proxy\": 0.9984221318241628,\n    \"proxy_min\": 0.5,\n    \"overclaim_warning\": \"E_* vs Profile C null is anatomy\\u2260compute demo only; efficiency_vs_flywire pass requires Profile D / tasked FlyWire\",\n    \"claim_level\": \"static_null_asymmetry\",\n    \"pass_kind\": \"static_null_demo\",\n    \"static_null_demo_ok\": true\n  }\n}\n",
+      "stderr_tail": "",
+      "parsed": {
+        "run_id": "B016_20260914T031847Z_s42",
+        "pass": false,
+        "pass_kind": "static_null_demo",
+        "claim_level": "static_null_asymmetry",
+        "json": "B016_20260914T031847Z_s42.json",
+        "md": "B016_20260914T031847Z_s42.md",
+        "comparisons": {
+          "E_disk_winner": "na_static_null",
+          "E_edge_winner": "na_static_null",
+          "E_tick_winner": "na_static_null",
+          "E_touch_winner": "na_static_null",
+          "dsc_E_wins": 0,
+          "static_null_demo_axes": 4,
+          "goal_two_of_four": false,
+          "null_opponent": true,
+          "dsc_proxy": 0.9984221318241628,
+          "proxy_min": 0.5,
+          "overclaim_warning": "E_* vs Profile C null is anatomy\u2260compute demo only; efficiency_vs_flywire pass requires Profile D / tasked FlyWire",
+          "claim_level": "static_null_asymmetry",
+          "pass_kind": "static_null_demo",
+          "static_null_demo_ok": true
+        }
+      }
+    },
+    {
+      "label": "F020_dev_run",
+      "argv": [
+        "--out",
+        "/Users/ai_agent_mar2026/Source/repos/DSC/BENCHMARKS/runs",
+        "--seed",
+        "42"
+      ],
+      "returncode": 0,
+      "seconds": 1.5,
+      "stdout_tail": "{\n  \"protocol\": \"dev_run_v0\",\n  \"pass\": true,\n  \"gates\": {\n    \"G1_task\": true,\n    \"G2_evolve\": true,\n    \"G3_footprint\": true,\n    \"G4_honesty\": true,\n    \"G5_dynamics\": true\n  },\n  \"checkpoint\": \"dsc_dev_20260914T031847Z\",\n  \"task_error_eval\": 0.00826526979765725,\n  \"b016_run_id\": \"B016_20260914T031848Z_s42\",\n  \"b016_pass_kind\": \"static_null_demo\"\n}\n",
+      "stderr_tail": "",
+      "parsed": {
+        "protocol": "dev_run_v0",
+        "pass": true,
+        "gates": {
+          "G1_task": true,
+          "G2_evolve": true,
+          "G3_footprint": true,
+          "G4_honesty": true,
+          "G5_dynamics": true
+        },
+        "checkpoint": "dsc_dev_20260914T031847Z",
+        "task_error_eval": 0.00826526979765725,
+        "b016_run_id": "B016_20260914T031848Z_s42",
+        "b016_pass_kind": "static_null_demo"
+      }
+    }
+  ],
+  "panel": [
+    {
+      "neuropil": "GNG",
+      "family": "preferential",
+      "ok": true,
+      "run_id": "stressD_20260914T031851Z_n512_GNG_preferential",
+      "fly_wins": 0,
+      "dsc_wins": 6,
+      "dsc_task": 0.10129587048610823,
+      "fly_task": 0.10133548839677353,
+      "gaps": [
+        {
+          "metric": "task_error",
+          "dsc": 0.10129587048610823,
+          "er": 0.10129587048610823,
+          "fly_adj": 0.10133548839677353,
+          "winner": "dsc",
+          "dev_hint": "DSC holding on task \u2014 push scale or harder harness"
+        },
+        {
+          "metric": "E_tick",
+          "dsc": 0.000543196710943245,
+          "er": 0.000543196710943245,
+          "fly_adj": 0.0005331830094738441,
+          "winner": "dsc",
+          "dev_hint": "DSC cheaper/tick \u2014 keep while raising task"
+        },
+        {
+          "metric": "E_edge",
+          "dsc": 6.91614899787187e-05,
+          "er": 6.91614899787187e-05,
+          "fly_adj": 6.91590020594967e-05,
+          "winner": "dsc",
+          "dev_hint": "Good edge efficiency \u2014 test at larger N"
+        },
+        {
+          "metric": "utility_mean",
+          "dsc": 0.1612322851692614,
+          "er": 0.1612322851692614,
+          "fly_adj": 0.1568376158823531,
+          "winner": "dsc",
+          "dev_hint": "Utility OK on this family"
+        },
+        {
+          "metric": "coverage_mean",
+          "dsc": 0.46162226655548444,
+          "er": 0.46162226655548444,
+          "fly_adj": 0.459159464048059,
+          "winner": "dsc",
+          "dev_hint": "Coverage holding"
+        },
+        {
+          "metric": "tick_wall_us",
+          "dsc": 1671.6250000001764,
+          "er": 1671.6250000001764,
+          "fly_adj": 1702.958500000129,
+          "winner": "dsc",
+          "dev_hint": "DSC already fast"
+        }
+      ],
+      "seconds": 2.7,
+      "md": "stressD_20260914T031851Z_n512_GNG_preferential.md",
+      "json": "stressD_20260914T031851Z_n512_GNG_preferential.json"
+    },
+    {
+      "neuropil": "AVLP_R",
+      "family": "preferential",
+      "ok": true,
+      "run_id": "stressD_20260914T031854Z_n512_AVLP_R_preferential",
+      "fly_wins": 4,
+      "dsc_wins": 2,
+      "dsc_task": 0.10143253894414497,
+      "fly_task": 0.10125344045834397,
+      "gaps": [
+        {
+          "metric": "task_error",
+          "dsc": 0.10143253894414497,
+          "er": 0.10143253894414497,
+          "fly_adj": 0.10125344045834397,
+          "winner": "fly_adj",
+          "dev_hint": "Need stronger inductive bias / motifs"
+        },
+        {
+          "metric": "E_tick",
+          "dsc": 0.0004658429270951363,
+          "er": 0.0004658429270951363,
+          "fly_adj": 0.00047353686524547107,
+          "winner": "fly_adj",
+          "dev_hint": "Optimize message passing / hub handling"
+        },
+        {
+          "metric": "E_edge",
+          "dsc": 3.855892858349138e-05,
+          "er": 3.855892858349138e-05,
+          "fly_adj": 3.6535615472059977e-05,
+          "winner": "dsc",
+          "dev_hint": "Good edge efficiency \u2014 test at larger N"
+        },
+        {
+          "metric": "utility_mean",
+          "dsc": 0.16119250250696604,
+          "er": 0.16119250250696604,
+          "fly_adj": 0.15538351009332113,
+          "winner": "dsc",
+          "dev_hint": "Utility OK on this family"
+        },
+        {
+          "metric": "coverage_mean",
+          "dsc": 0.4643846488670486,
+          "er": 0.4643846488670486,
+          "fly_adj": 0.46518652953837175,
+          "winner": "fly_adj",
+          "dev_hint": "Coverage collapse under prune/skew \u2014 strengthen F008 absorb"
+        },
+        {
+          "metric": "tick_wall_us",
+          "dsc": 1948.9584999998754,
+          "er": 1948.9584999998754,
+          "fly_adj": 1917.6040000008497,
+          "winner": "fly_adj",
+          "dev_hint": "Sparse kernels on hubs"
+        }
+      ],
+      "seconds": 2.7,
+      "md": "stressD_20260914T031854Z_n512_AVLP_R_preferential.md",
+      "json": "stressD_20260914T031854Z_n512_AVLP_R_preferential.json"
+    },
+    {
+      "neuropil": "ME_R",
+      "family": "laminar",
+      "ok": true,
+      "run_id": "stressD_20260914T031857Z_n512_ME_R_laminar",
+      "fly_wins": 5,
+      "dsc_wins": 1,
+      "dsc_task": 0.10131981648063557,
+      "fly_task": 0.10117564743301982,
+      "gaps": [
+        {
+          "metric": "task_error",
+          "dsc": 0.10131981648063557,
+          "er": 0.10131981648063557,
+          "fly_adj": 0.10117564743301982,
+          "winner": "fly_adj",
+          "dev_hint": "Need stronger inductive bias / motifs"
+        },
+        {
+          "metric": "E_tick",
+          "dsc": 0.0008423503567257991,
+          "er": 0.0008423503567257991,
+          "fly_adj": 0.0008527287808168232,
+          "winner": "fly_adj",
+          "dev_hint": "Optimize message passing / hub handling"
+        },
+        {
+          "metric": "E_edge",
+          "dsc": 0.0002546988664312632,
+          "er": 0.0002546988664312632,
+          "fly_adj": 0.0002547322123312454,
+          "winner": "fly_adj",
+          "dev_hint": "More signal per edge: prune+coverage under skew"
+        },
+        {
+          "metric": "utility_mean",
+          "dsc": 0.16622793440438527,
+          "er": 0.16622793440438527,
+          "fly_adj": 0.16014130727689835,
+          "winner": "dsc",
+          "dev_hint": "Utility OK on this family"
+        },
+        {
+          "metric": "coverage_mean",
+          "dsc": 0.4602378406759419,
+          "er": 0.4602378406759419,
+          "fly_adj": 0.46296067868244023,
+          "winner": "fly_adj",
+          "dev_hint": "Coverage collapse under prune/skew \u2014 strengthen F008 absorb"
+        },
+        {
+          "metric": "tick_wall_us",
+          "dsc": 1077.9379999990012,
+          "er": 1077.9379999990012,
+          "fly_adj": 1064.9579999997272,
+          "winner": "fly_adj",
+          "dev_hint": "Sparse kernels on hubs"
+        }
+      ],
+      "seconds": 3.57,
+      "md": "stressD_20260914T031857Z_n512_ME_R_laminar.md",
+      "json": "stressD_20260914T031857Z_n512_ME_R_laminar.json"
+    },
+    {
+      "neuropil": "LO_R",
+      "family": "laminar",
+      "ok": true,
+      "run_id": "stressD_20260914T031905Z_n512_LO_R_laminar",
+      "fly_wins": 3,
+      "dsc_wins": 3,
+      "dsc_task": 0.10128713533603734,
+      "fly_task": 0.1012431361681741,
+      "gaps": [
+        {
+          "metric": "task_error",
+          "dsc": 0.10128713533603734,
+          "er": 0.10128713533603734,
+          "fly_adj": 0.1012431361681741,
+          "winner": "fly_adj",
+          "dev_hint": "Need stronger inductive bias / motifs"
+        },
+        {
+          "metric": "E_tick",
+          "dsc": 0.0005771747886368975,
+          "er": 0.0005771747886368975,
+          "fly_adj": 0.0005715367191478063,
+          "winner": "dsc",
+          "dev_hint": "DSC cheaper/tick \u2014 keep while raising task"
+        },
+        {
+          "metric": "E_edge",
+          "dsc": 8.006599101850123e-05,
+          "er": 8.006599101850123e-05,
+          "fly_adj": 8.006918998234788e-05,
+          "winner": "fly_adj",
+          "dev_hint": "More signal per edge: prune+coverage under skew"
+        },
+        {
+          "metric": "utility_mean",
+          "dsc": 0.1681886694295025,
+          "er": 0.1681886694295025,
+          "fly_adj": 0.15797971237504216,
+          "winner": "dsc",
+          "dev_hint": "Utility OK on this family"
+        },
+        {
+          "metric": "coverage_mean",
+          "dsc": 0.4616985361920398,
+          "er": 0.4616985361920398,
+          "fly_adj": 0.4620923431813871,
+          "winner": "fly_adj",
+          "dev_hint": "Coverage collapse under prune/skew \u2014 strengthen F008 absorb"
+        },
+        {
+          "metric": "tick_wall_us",
+          "dsc": 1573.2295000017161,
+          "er": 1573.2295000017161,
+          "fly_adj": 1588.8124999978713,
+          "winner": "dsc",
+          "dev_hint": "DSC already fast"
+        }
+      ],
+      "seconds": 7.82,
+      "md": "stressD_20260914T031905Z_n512_LO_R_laminar.md",
+      "json": "stressD_20260914T031905Z_n512_LO_R_laminar.json"
+    }
+  ],
+  "finished": "2026-09-14T03:19:05.785754+00:00"
+}

@@ -1,0 +1,18 @@
+{
+  "bench": "B010",
+  "utc": "2026-09-14T03:18:46Z",
+  "seed": 42,
+  "ticks": 64,
+  "mutated_active": false,
+  "task_error": 0.0015803617783935451,
+  "task_utility_proxy": 0.9984221318241628,
+  "active_cells": 128,
+  "dormant_proxy_latent": 64,
+  "disk_bytes": 95535,
+  "n_edges": 1276,
+  "activation_sparsity": 0.0,
+  "E_disk": 1.0450851853500423e-05,
+  "E_edge": 0.0007824624857556135,
+  "pass": true,
+  "rule": "task_error<=0.05 (aligned with F020 G1)"
+}
