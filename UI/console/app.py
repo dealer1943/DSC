@@ -14,11 +14,12 @@ from textual.containers import Horizontal, Vertical
 from textual.timer import Timer
 from textual.widgets import Footer, Header, Input, ProgressBar, RichLog, Static
 
-from adapters import dsc_runtime, flywire_pack
+from adapters import dsc_runtime, flywire_pack, openworm_pack
 from adapters.base import ViewModel
 from console.color import legend_text, markup_fg, refresh_legend, set_signal_anchors
 from console.themes import anchors_from_theme, dsc_themes
 from console.render import canvas_panel, signal_panel, summary_panel
+from console.biology import biology_panel, should_show_biology
 from console.slash import (
     DEFAULT_SAMPLE_HZ,
     MAX_SAMPLE_HZ,
@@ -64,21 +65,41 @@ class OperatorConsole(App):
         color: $foreground;
         text-style: bold;
     }
-    #main { height: 1fr; }
+    #main { height: 1fr; layout: vertical; }
+    #midrow { height: 1fr; }
+    #biology {
+        width: 52;
+        min-width: 52;
+        border: tall $accent;
+        padding: 0 1;
+        background: $surface;
+        color: $foreground;
+        display: none;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+    #biology.visible { display: block; }
     #canvas {
-        width: 3fr;
+        width: 2fr;
+        min-width: 28;
         border: tall $primary;
         padding: 0 1;
         background: $panel;
         color: $foreground;
+        overflow-x: hidden;
     }
-    #side { width: 2fr; }
+    #side {
+        width: 3fr;
+        min-width: 44;
+        overflow-x: hidden;
+    }
     #signals {
         height: 1fr;
         border: tall $secondary;
         padding: 0 1;
         background: $surface;
         color: $foreground;
+        overflow-x: hidden;
     }
     #summary {
         height: 1fr;
@@ -86,6 +107,7 @@ class OperatorConsole(App):
         padding: 0 1;
         background: $panel;
         color: $foreground;
+        overflow-x: hidden;
     }
     #terminal {
         height: 10;
@@ -163,11 +185,13 @@ class OperatorConsole(App):
             f" EMPTY  ·  /load flywire  ·  {legend_text()} ",
             id="banner",
         )
-        with Horizontal(id="main"):
-            yield Static("(canvas)", id="canvas", markup=True)
-            with Vertical(id="side"):
-                yield Static("(signals)", id="signals", markup=True)
-                yield Static("(summary)", id="summary", markup=True)
+        with Vertical(id="main"):
+            with Horizontal(id="midrow"):
+                yield Static("", id="biology", markup=True)
+                yield Static("(canvas)", id="canvas", markup=True)
+                with Vertical(id="side"):
+                    yield Static("(signals)", id="signals", markup=True)
+                    yield Static("(summary)", id="summary", markup=True)
         yield RichLog(id="terminal", highlight=True, markup=True, wrap=True)
         yield Static(id="slashmenu", markup=True)
         with Vertical(id="loadprog"):
@@ -175,7 +199,7 @@ class OperatorConsole(App):
             yield ProgressBar(total=100, show_eta=False, id="loadbar")
         with Horizontal(id="cmdline"):
             yield Input(
-                placeholder="/load flywire   ·   /load dsc   ·   /sample 16   ·   / for commands",
+                placeholder="/load dsc|flywire|openworm   ·   /sample 16   ·   / for commands",
                 id="cmd",
             )
         yield Footer()
@@ -192,7 +216,7 @@ class OperatorConsole(App):
         self.query_one("#cmd", Input).focus()
         self._term("operator console ready · F012 · Ctrl+P opens Menu (themes apply to chrome + signals)")
         self._term(f"live sample {self.sample_hz:g} Hz — /sample 16 for faster pulse")
-        self._term("try: /load dsc   or   /load flywire")
+        self._term("try: /load dsc  ·  /load flywire  ·  /load openworm")
         self._refresh_slash_menu("")
         self._arm_sampler()
 
@@ -299,8 +323,30 @@ class OperatorConsole(App):
         self.query_one("#canvas", Static).update(
             canvas_panel(vm.nodes, vm.edges, vm.caption, phase=phase)
         )
+        bio = self.query_one("#biology", Static)
+        focus = None
+        if isinstance(vm.status, dict):
+            focus = vm.status.get("focus")
+        if should_show_biology(vm.mode):
+            bio.add_class("visible")
+            live = None
+            if self.adapter is not None and hasattr(self.adapter, "brain_map_markup"):
+                live = self.adapter.brain_map_markup(
+                    focus=focus if isinstance(focus, str) else None
+                ) or None
+            bio.update(
+                biology_panel(
+                    vm.mode,
+                    focus=focus if isinstance(focus, str) else None,
+                    phase=phase,
+                    live_markup=live,
+                )
+            )
+        else:
+            bio.remove_class("visible")
+            bio.update("")
         self.query_one("#signals", Static).update(
-            signal_panel(vm.signals, sample_hz=self.sample_hz)
+            signal_panel(vm.signals, width=28, sample_hz=self.sample_hz)
         )
         self.query_one("#summary", Static).update(summary_panel(vm.status, phase=phase))
         if quiet:
@@ -389,8 +435,8 @@ class OperatorConsole(App):
         if verb == "load":
             kind = (args[0].lower() if args else "")
             rest = args[1:]
-            if kind not in ("flywire", "fly", "fw", "dsc", "active", "model"):
-                self._term("usage: /load flywire [pack_dir]  |  /load dsc [active_dir]")
+            if kind not in ("flywire", "fly", "fw", "dsc", "active", "model", "openworm", "worm", "celegans", "c302"):
+                self._term("usage: /load flywire|dsc|openworm [path]")
                 return
 
             def on_prog(frac: float, message: str) -> None:
@@ -402,6 +448,11 @@ class OperatorConsole(App):
                 if kind in ("flywire", "fly", "fw"):
                     pack = rest[0] if rest else None
                     self.adapter = flywire_pack.create(pack)
+                    self.adapter.set_progress(on_prog)
+                    lines = self.adapter.load(pack)
+                elif kind in ("openworm", "worm", "celegans", "c302"):
+                    pack = rest[0] if rest else None
+                    self.adapter = openworm_pack.create(pack)
                     self.adapter.set_progress(on_prog)
                     lines = self.adapter.load(pack)
                 else:

@@ -69,3 +69,9 @@ UI/exports/
 *.png
 !**/docs/**/*.png
 
+# OpenWorm pack is tiny — keep CSVs + manifest tracked
+!MODELS/worm/
+!MODELS/worm/**/
+!MODELS/worm/**/*.csv
+!MODELS/worm/**/*.md
+!MODELS/worm/**/*.json

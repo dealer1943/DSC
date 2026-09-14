@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 
 from dsc import defaults
-from dsc.gating import gated_response, type_mixture
+from dsc.gating import gated_response, type_mixture, temperatures_from_diff
 from dsc.progress import ProgressCb, emit
 from dsc.substrate import Substrate
 
@@ -36,7 +36,7 @@ class Population:
         return int(self.gate_logits.shape[1])
 
     def mixture(self) -> np.ndarray:
-        return type_mixture(self.gate_logits)
+        return type_mixture(self.gate_logits, temperatures_from_diff(self.differentiation))
 
     def dominant_type_indices(self) -> np.ndarray:
         return self.mixture().argmax(axis=1)

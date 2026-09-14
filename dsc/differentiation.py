@@ -1,10 +1,11 @@
-"""F004 light — differentiation ∈ [0,1] from utility stability."""
+"""F004 — differentiation ∈ [0,1] from utility stability + gate peak (emergence)."""
 from __future__ import annotations
 
 import numpy as np
 
 from dsc import defaults
 from dsc.cells import Population
+from dsc.gating import mixture_entropy
 
 
 def update_differentiation(
@@ -12,9 +13,8 @@ def update_differentiation(
     prev_utility: np.ndarray,
 ) -> dict:
     """
-    Rising commitment when utility is high and stable; fall toward STEM when it drops.
-    `prev_utility` is the per-cell utility vector from *before* the latest EMA update
-    (or a copy taken before update_utilities).
+    Rising commitment when utility is high/stable and gates are peaked;
+    fall toward STEM when utility drops.
     """
     u = pop.utility
     prev = prev_utility
@@ -23,14 +23,19 @@ def update_differentiation(
     high = u >= np.median(u)
 
     rise = defaults.DIFF_RISE * stable.astype(np.float64) * (0.5 + 0.5 * high.astype(np.float64))
-    # fall when utility decreased meaningfully
     fell = delta < -defaults.DIFF_STABILITY_EPS
     fall = defaults.DIFF_FALL * fell.astype(np.float64)
 
+    # Peak bonus: low mixture entropy → already leaning into a type
+    mix = pop.mixture()
+    ent = mixture_entropy(mix)
+    ent_max = np.log(mix.shape[1])
+    peaked = 1.0 - (ent / (ent_max + 1e-9))
+    rise = rise + defaults.DIFF_PEAK_BONUS * peaked * high.astype(np.float64)
+
     target = pop.differentiation + rise - fall
-    # also gently pull unused (very low utility) cells toward STEM
     low = u < (u.mean() - u.std() + 1e-9)
-    target = np.where(low, target * 0.9, target)
+    target = np.where(low, target * 0.92, target)
 
     alpha = defaults.DIFF_EMA_ALPHA
     pop.differentiation = np.clip(
@@ -38,8 +43,12 @@ def update_differentiation(
         0.0,
         1.0,
     )
+    labels = pop.type_labels()
+    typed = sum(1 for x in labels if x != "STEM")
     return {
         "diff_mean": float(pop.differentiation.mean()),
         "diff_max": float(pop.differentiation.max()),
         "stem_frac": float((pop.differentiation < defaults.DIFF_STEM_LABEL).mean()),
+        "typed_n": int(typed),
+        "type_entropy_mean": float(ent.mean()),
     }

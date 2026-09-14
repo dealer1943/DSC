@@ -17,6 +17,7 @@ from dsc.utility import update_utilities
 from dsc.differentiation import update_differentiation
 from dsc.evolve import PopSnapshot, run_cycles
 from dsc.latent import LatentPool
+from dsc.emergence import emerge_elites, histogram_line
 
 DEFAULT_ACTIVE = Path(__file__).resolve().parents[1] / "MODEL" / "active"
 
@@ -68,6 +69,7 @@ class DscRuntime:
             self._push("novelty_mean", last["novelty_mean"])
             self._push("diff_mean", last["diff_mean"])
             self._push("stem_frac", last["stem_frac"])
+            self._push("typed_n", float(last.get("typed_n", 0)))
         self.log(f"tick t={self.harness.t} err={last.get('err', 0):.4f} util={last.get('utility_mean', 0):.4f}")
         return last
 
@@ -88,6 +90,7 @@ class DscRuntime:
             "diff_mean": round(float(self.pop.differentiation.mean()), 4),
             "evolve_count": self.evolve_count,
             "latent_pool": len(self.latent),
+            "typed_n": sum(1 for x in self.pop.type_labels() if x != "STEM"),
             "activity_mean": round(float(self.pop.activity.mean()), 5),
             "task": defaults.TASK_NAME,
         }
@@ -171,6 +174,16 @@ class DscRuntime:
             self._push("utility_mean", rep.util_after if not rep.rolled_back else rep.util_before)
             self._push("diff_mean", float(self.pop.differentiation.mean()))
             self._push("stem_frac", float((self.pop.differentiation < defaults.DIFF_STEM_LABEL).mean()))
+        if ok_cycles > 0:
+            em = emerge_elites(self.pop)
+            lines.append(
+                f"emerge elites · typed={int(em['typed_n'])} "
+                f"stem_frac={em['stem_frac']:.3f} diff_mean={em['diff_mean']:.3f}"
+            )
+            lines.append(histogram_line(self.pop))
+            self._push("stem_frac", em["stem_frac"])
+            self._push("diff_mean", em["diff_mean"])
+            self._push("typed_n", em["typed_n"])
         lines.append(
             f"evolve done · applied={ok_cycles}/{len(reports)} · "
             f"diff_mean={float(self.pop.differentiation.mean()):.3f} · "

@@ -8,11 +8,12 @@
 
 | Field | Value |
 |--------|--------|
-| Phase | S005 prune/absorb/crossover on evolve |
-| Last completed slice | S005 latent + absorb + crossover |
+| Phase | S008 live BRAIN MAP (local) |
+| Last completed slice | S008 live FlyWire BRAIN MAP activity field |
 | Prior completed | `S000` continuity scaffold |
 | Active slice | none |
-| Next | B006/B007/B008 benches or F016 tutorial / R001 meta-manager |
+| Next | Check-in S008/F019 + prior local slices |
+| Packs | FlyWire + OpenWorm (`MODELS/worm/openworm_c302`) + DSC active |
 | Code | `dsc/` + evolve/differentiation; UI `/evolve` `/rollback`; MODEL/active tip |
 | Blockers | None |
 

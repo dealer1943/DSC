@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 
 from .base import EdgeView, NodeView, ViewModel
+from .fly_activity import FlyActivityEngine
+from console.brain_field import BrainField
 
 ADAPTER_NAME = "flywire"
 IMPLEMENTED = True
@@ -36,6 +38,9 @@ class FlyWirePackAdapter:
         self._df: Optional[pd.DataFrame] = None
         self._focus: Optional[str] = None  # neuropil substring or node id
         self._events: List[str] = []
+        self._activity = FlyActivityEngine()
+        self._field: Optional[BrainField] = None
+        self._stim_on = False
         self._signals: Dict[str, List[float]] = {
             "n_edges": [],
             "n_nodes": [],
@@ -68,6 +73,9 @@ class FlyWirePackAdapter:
             "evolve": False,
             "bench": False,
             "rollback": False,
+            "stim": True,
+            "rest": True,
+            "pulse": True,
         }
 
     def _log(self, line: str) -> None:
@@ -101,9 +109,22 @@ class FlyWirePackAdapter:
         self._rebuild_views()
         self._prog(1.0, f"flywire: ready · {pack_label(self.pack_dir)}")
         self._log(f"loaded proofread connections: {n:,} edges from {pack_label(self.pack_dir)}")
+        try:
+            self._prog(0.9, "flywire: activity field")
+            self._activity.load()
+            self._field = BrainField(
+                self._activity.x, self._activity.y, self._activity.region,
+                width=44, height=16,
+            )
+            self._activity.stim(["optic", "AL"], strength=0.28)
+            self._stim_on = True
+            self._prog(0.98, "flywire: activity field ready")
+        except Exception as exc:  # noqa: BLE001
+            self._field = None
+            self._log(f"activity field unavailable: {exc}")
         return [
             f"FLYWIRE loaded · {n:,} edges · pack {pack_label(self.pack_dir)}",
-            "tip: /focus <neuropil>  e.g. /focus AL   ·  /status",
+            "tip: BRAIN MAP is live — /stim optic|AL|taste  ·  /pulse MB  ·  /rest  ·  /focus AL",
         ]
 
     def _filtered(self) -> pd.DataFrame:
@@ -205,28 +226,38 @@ class FlyWirePackAdapter:
 
 
     def sample_frame(self, phase: float) -> None:
-        """Demo dynamics on a static pack: breathe signals for live charts."""
+        """Live activity tick → BRAIN MAP field + chart breathes."""
         if self._df is None:
             return
         import math
+        if self._field is not None and self._activity.loaded:
+            indices = self._activity.tick()
+            self._field.tick(indices)
+            self._status["spikes_tick"] = self._activity.last_n_spikes
+            self._status["field_active"] = self._field.spikes_active()
+            self._status["stim"] = "on" if self._stim_on else "off"
+            self._status["activity_ticks"] = self._activity.ticks
         st = self._status or {}
         n_edges = float(st.get("n_edges") or 0)
         n_nodes = float(st.get("n_nodes") or 0)
         mean_syn = float(st.get("mean_syn") or 0)
         dent = float(st.get("degree_entropy") or 0)
-        # soft envelopes so sparklines move without lying about totals
         e_pulse = 1.0 + 0.012 * math.sin(phase * 1.7)
         n_pulse = 1.0 + 0.008 * math.sin(phase * 2.1 + 0.4)
         s_pulse = mean_syn * (1.0 + 0.04 * math.sin(phase * 2.9 + 1.1))
         d_pulse = dent * (1.0 + 0.015 * math.sin(phase * 1.3 + 2.0))
-        # live activity index 0..1 for a dedicated strip
-        live = 0.5 + 0.5 * math.sin(phase * 2.6)
+        spikes = float(st.get("spikes_tick") or 0)
+        live = min(1.0, spikes / 800.0) if spikes else (0.08 + 0.04 * math.sin(phase * 2.6))
         self._signals.setdefault("live", [])
         self._push_signals(n_edges * e_pulse, n_nodes * n_pulse, s_pulse, d_pulse)
         hist = self._signals["live"]
         hist.append(live)
         if len(hist) > SIGNAL_HISTORY:
             self._signals["live"] = hist[-SIGNAL_HISTORY:]
+        sh = self._signals.setdefault("spikes_tick", [])
+        sh.append(spikes)
+        if len(sh) > SIGNAL_HISTORY:
+            self._signals["spikes_tick"] = sh[-SIGNAL_HISTORY:]
 
     def focus(self, query: str) -> List[str]:
         if self._df is None:
@@ -259,7 +290,7 @@ class FlyWirePackAdapter:
 
     def request(self, verb: str, args: List[str]) -> List[str]:
         caps = self.capabilities()
-        if verb in caps and not caps[verb] and verb not in ("help", "load", "status", "focus", "signal", "clear"):
+        if verb in caps and not caps[verb] and verb not in ("help", "load", "status", "focus", "signal", "clear", "stim", "rest", "pulse"):
             return [f"refuse: /{verb} not supported on FLYWIRE adapter"]
         if verb == "load":
             pack = args[0] if args else None
@@ -286,9 +317,46 @@ class FlyWirePackAdapter:
         if verb == "clear":
             self._events.clear()
             return ["terminal cleared"]
+        if verb == "stim":
+            if self._field is None:
+                return ["refuse: activity field not loaded"]
+            regions = list(args) if args else ["optic", "AL"]
+            strength = 0.35
+            if args:
+                try:
+                    strength = float(args[-1])
+                    regions = args[:-1] or ["optic", "AL"]
+                except ValueError:
+                    regions = list(args)
+            ids = self._activity.stim(regions, strength=strength)
+            self._stim_on = True
+            self._log(f"stim → {ids} strength={strength:.2f}")
+            return [f"stim on · regions={ids} · strength={strength:.2f}"]
+        if verb == "pulse":
+            if self._field is None:
+                return ["refuse: activity field not loaded"]
+            region = args[0] if args else "optic"
+            strength = float(args[1]) if len(args) > 1 else 0.55
+            ids = self._activity.pulse(region, strength=strength)
+            self._stim_on = True
+            return [f"pulse {region} · regions={ids} · strength={strength:.2f}"]
+        if verb == "rest":
+            if self._field is None:
+                return ["refuse: activity field not loaded"]
+            self._activity.rest()
+            self._stim_on = False
+            self._log("rest — drive cleared; field decaying")
+            return ["rest · drive cleared · watch the map decay"]
         if verb in ("tick", "evolve", "bench", "rollback", "save"):
-            return [f"refuse: /{verb} is DSC-only — FLYWIRE is read-only comparison"]
+            return [f"refuse: /{verb} is DSC-only — FLYWIRE is comparison (+ live map)"]
         return [f"unknown verb /{verb}"]
+
+
+    def brain_map_markup(self, focus: Optional[str] = None) -> str:
+        """F019 live BRAIN MAP paint for the biology pane."""
+        if self._field is None:
+            return ""
+        return self._field.paint_markup(focus=focus)
 
 
 # module-level factory used by console

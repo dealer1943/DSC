@@ -42,11 +42,15 @@ SCHEMA_VERSION = 1
 CHECKPOINT_NAME = "checkpoint.npz"
 
 # Differentiation (F004 light)
-DIFF_EMA_ALPHA = 0.12
-DIFF_RISE = 0.08          # push toward 1 when utility stable/high
-DIFF_FALL = 0.10          # fall toward STEM when utility drops
-DIFF_STABILITY_EPS = 0.02 # |Δu| below this counts as stable
-DIFF_STEM_LABEL = 0.35    # UI STEM label threshold (cells.py)
+DIFF_EMA_ALPHA = 0.18
+DIFF_RISE = 0.14          # push toward 1 when utility stable/high
+DIFF_FALL = 0.06          # fall toward STEM when utility drops
+DIFF_STABILITY_EPS = 0.025 # |Δu| below this counts as stable
+DIFF_STEM_LABEL = 0.30    # UI STEM label threshold (cells.py)
+DIFF_PEAK_BONUS = 0.10    # extra rise when gate mixture is peaked (low entropy)
+DIFF_TEMP_FLOOR = 0.85    # committed cells: temp *= (1 - floor*diff) → sharper types
+EMERGE_ELITE_BOOST = 0.12 # post-evolve commitment bump for top-K elites
+EMERGE_GATE_SHARPEN = 0.35  # post-evolve amplify gate logits toward winner
 
 # Evolution (F006)
 EVOLVE_TOP_K = 16                 # elites kept / cloned from

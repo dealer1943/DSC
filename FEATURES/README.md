@@ -27,3 +27,12 @@ F004 light, F006 MVP, F009 light are **implemented** — see slice `SLICES/S004_
 
 ## S005 (2026-09-13)
 F007 latent prune, F008 absorption, and evolve crossover are **implemented**.
+
+## F017
+Offline OpenWorm *C. elegans* comparison pack + `/load openworm`.
+
+## F018
+Biology identity pane — fly still (fruitfly demo asset) + *C. elegans* ASCII map for OpenWorm; hide on DSC. See `FEATURES/F018_biology_identity_pane.md`.
+
+## F019
+Live FlyWire BRAIN MAP activity field — soma-projected energy with decay/bleed and region glyph paint (behavioral source: https://github.com/dealer1943/FlyBrains). See `FEATURES/F019_live_brain_activity_field.md`.

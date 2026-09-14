@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "kind": "openworm_c302_pack",
+  "display_name": "openworm_c302",
+  "organism": "C. elegans",
+  "source": "OpenWorm c302 / White et al. 1986 whole connectome",
+  "source_url": "https://github.com/openworm/c302/tree/master/c302/data",
+  "project_url": "https://openworm.org/",
+  "license_note": "OpenWorm MIT; connectivity from published literature via c302",
+  "created_utc": "2026-09-13T22:42:28Z",
+  "files": {
+    "aconnectome_white_1986_whole.csv": "upstream whole-animal adjacency (TSV)",
+    "edges.csv": "normalized edges (all cells in CSV)",
+    "edges_neural.csv": "neuron\u2013neuron edges only (muscles stripped)"
+  },
+  "stats": {
+    "n_nodes_all": 309,
+    "n_nodes_neural": 306,
+    "n_edges_all": 2961,
+    "n_edges_neural": 2841,
+    "n_chemical": 2386,
+    "n_electrical": 575
+  },
+  "ui_default_edges": "edges_neural.csv",
+  "dynamics": false,
+  "offline": true
+}

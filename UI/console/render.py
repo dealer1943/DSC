@@ -62,7 +62,7 @@ def signal_panel(signals: Dict[str, List[float]], width: int = 42, sample_hz: fl
         else:
             lvl = 0.0
         last = markup_fg(f"{last_v:.4g}", _clamp01(lvl))
-        lines.append(f"{name:<16} {sparkline(hist, width)}  {last}")
+        lines.append(f"{name:<12} {sparkline(hist, width)} {last}")
     return "\n".join(lines)
 
 

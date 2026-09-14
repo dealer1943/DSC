@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "kind": "dsc_active",
+  "kind": "dsc_model_bundle",
   "revision": "r1-n128-e1276",
-  "updated_utc": "2026-09-13T21:34:26Z",
-  "created_utc": "2026-09-13T21:22:12Z",
+  "updated_utc": "2026-09-13T21:44:50Z",
+  "created_utc": "2026-09-13T21:44:50Z",
   "note": "MVP+evolve: F001\u2013F006/F009 light + F010/F013/F014",
   "pairs_with_features": [
     "F001",
@@ -31,5 +31,6 @@
   },
   "checkpoint": "checkpoint.npz",
   "harness": "harness.json",
-  "display_name": "active"
+  "display_name": "dsc_20260913_214450.model",
+  "saved_utc": "2026-09-13T21:44:50Z"
 }

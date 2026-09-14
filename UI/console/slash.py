@@ -6,9 +6,12 @@ from typing import List, Tuple
 # (verb, help, dsc?, flywire?)
 COMMANDS: List[Tuple[str, str, bool, bool]] = [
     ("help", "list commands", True, True),
-    ("load", "load substrate: /load flywire|dsc [path]", True, True),
+    ("load", "load: /load dsc|flywire|openworm [path]", True, True),
     ("status", "mode, sizes, focus", True, True),
     ("focus", "narrow canvas: neuropil / id / all", False, True),
+    ("stim", "drive regions: /stim optic|AL|taste [strength]", False, True),
+    ("pulse", "pulse one region: /pulse MB", False, True),
+    ("rest", "clear drive; watch BRAIN MAP decay", False, True),
     ("signal", "list or pin a signal series", True, True),
     ("sample", "live refresh Hz (default 8); e.g. /sample 16", True, True),
     ("tick", "advance DSC n steps", True, False),
@@ -38,10 +41,10 @@ def palette_lines(prefix: str = "/", mode: str = "EMPTY") -> List[str]:
     for verb, help_, dsc_ok, fly_ok in COMMANDS:
         if raw and not verb.startswith(raw):
             continue
-        if mode == "FLYWIRE" and not fly_ok:
+        if mode in ("FLYWIRE", "OPENWORM") and not fly_ok:
             avail = "· dsc-only"
         elif mode == "DSC" and not dsc_ok:
-            avail = "· fly-only"
+            avail = "· static-only"
         else:
             avail = ""
         lines.append(f"/{verb:<10} {help_} {avail}".rstrip())

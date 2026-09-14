@@ -5,7 +5,7 @@ status: implemented (light)
 phase: 2
 pairs_with: [B004]
 updated: 2026-09-13
-slice: S004
+slice: S004 / S006
 ---
 
 ## Purpose
@@ -26,3 +26,9 @@ UI: cells with `differentiation < DIFF_STEM_LABEL` (0.35) display as `STEM`; oth
 
 ## Persistence
 Stored in `checkpoint.npz` as `differentiation` (already in F001 persist path).
+
+## S006 emergence
+- `DIFF_PEAK_BONUS` when mixture entropy is low
+- Per-cell softmax temperature ↓ with differentiation (`DIFF_TEMP_FLOOR`)
+- `emerge_elites` after successful `/evolve` (boost + gate sharpen)
+- STEM label threshold `DIFF_STEM_LABEL = 0.30`
