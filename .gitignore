@@ -98,3 +98,9 @@ BENCHMARKS/meta/*.jsonl
 # Large extracted subgraphs (optional fixtures)
 MODELS/fly/subgraphs/*.npz
 !MODELS/fly/subgraphs/README.md
+!BENCHMARKS/runs/R007_*.json
+!BENCHMARKS/runs/R007_*.md
+!BENCHMARKS/runs/B018_*.json
+!BENCHMARKS/runs/B018_*.md
+!BENCHMARKS/runs/F031_*.json
+!BENCHMARKS/runs/F031_*.md
