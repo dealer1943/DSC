@@ -27,11 +27,25 @@ def rule_line(width: int = 48) -> str:
     return markup_fg("─" * w, 0.35)
 
 
-def live_activity(base: float, node_id: str, phase: float) -> float:
-    """Pulse activity so the canvas breathes."""
+def live_activity(
+    base: float,
+    node_id: str,
+    phase: float,
+    *,
+    breathe: bool = True,
+) -> float:
+    """Display activity for a canvas node.
+
+    When breathe=False (FlyWire/worm at rest), show the tracked base only —
+    no ambient sine. When breathe=True, light phase motion on top of base
+    (DSC real activity, or fly while stim/drive is on).
+    """
+    base = _clamp01(base)
+    if not breathe:
+        return base
     h = sum(ord(c) for c in node_id[-8:]) % 997
     wave = 0.5 + 0.5 * math.sin(phase * 2.3 + h * 0.07)
-    return _clamp01(base * (0.42 + 0.58 * wave) + 0.08 * wave)
+    return _clamp01(base * (0.55 + 0.45 * wave))
 
 
 def sparkline(values: List[float], width: int = 40, colored: bool = True) -> str:
@@ -39,11 +53,21 @@ def sparkline(values: List[float], width: int = 40, colored: bool = True) -> str
         return "·" * min(width, 8)
     seq = values[-width:]
     lo, hi = min(seq), max(seq)
-    span = (hi - lo) or 1.0
+    span = hi - lo
     out = []
+    # Flat histories used to map every sample to BLOCKS[0] (" ") — charts looked
+    # dead after /rest (all zeros) and never "came back" for constant metrics.
+    if span < 1e-12:
+        if abs(lo) < 1e-12:
+            u, ch = 0.12, BLOCKS[1]  # dim ▁ row = quiet / rest
+        else:
+            u, ch = 0.45, BLOCKS[4]  # mid ▄ = flat but nonzero
+        cell = markup_fg(ch, u) if colored else ch
+        return cell * len(seq)
     for v in seq:
         u = (v - lo) / span
-        idx = int(u * (len(BLOCKS) - 1))
+        # never use BLOCKS[0] (" ") — troughs after /rest looked like a blackout
+        idx = 1 + int(u * (len(BLOCKS) - 2))
         ch = BLOCKS[idx]
         out.append(markup_fg(ch, u) if colored else ch)
     return "".join(out)
@@ -83,7 +107,11 @@ def _empty_slot() -> str:
     return markup_fg("\u00a0", 0.05)
 
 
-def cell_grid_body(nodes: List[NodeView], phase: float = 0.0) -> List[str]:
+def cell_grid_body(
+    nodes: List[NodeView],
+    phase: float = 0.0,
+    breathe: bool = True,
+) -> List[str]:
     """12 body rows of equal ● (and void). No caption. Fixed display width."""
     by_id = {int(n.id): n for n in nodes}
     n_cells = len(nodes)
@@ -100,7 +128,7 @@ def cell_grid_body(nodes: List[NodeView], phase: float = 0.0) -> List[str]:
                 if node is None:
                     row_parts.append(_empty_slot())
                 else:
-                    act = live_activity(node.activity, node.id, phase)
+                    act = live_activity(node.activity, node.id, phase, breathe=breathe)
                     if node.utility is not None:
                         u = _clamp01(0.5 + 0.5 * math.tanh(float(node.utility)))
                         act = _clamp01(0.7 * act + 0.3 * u)
@@ -115,12 +143,13 @@ def activity_side_list(
     nodes: List[NodeView],
     phase: float = 0.0,
     limit: int = 12,
+    breathe: bool = True,
 ) -> List[str]:
     """Top activity bars (legacy list) — for the right column."""
     ranked = sorted(nodes, key=lambda n: n.activity, reverse=True)[:limit]
     lines = []
     for n in ranked:
-        act = live_activity(n.activity, n.id, phase)
+        act = live_activity(n.activity, n.id, phase, breathe=breathe)
         bar_w = max(1, int(act * 16))
         bar_chars = []
         for i in range(16):
@@ -142,6 +171,7 @@ def cell_grid_panel(
     caption: str,
     phase: float = 0.0,
     width: int = 72,
+    breathe: bool = True,
 ) -> List[str]:
     """Caption + legend + 12×12 grid only (no side list)."""
     n_cells = len(nodes)
@@ -153,7 +183,7 @@ def cell_grid_panel(
         ),
         rule_line(48),
     ]
-    lines.extend(cell_grid_body(nodes, phase=phase))
+    lines.extend(cell_grid_body(nodes, phase=phase, breathe=breathe))
     return lines
 
 
@@ -163,6 +193,7 @@ def dsc_grid_with_side_list(
     caption: str,
     phase: float = 0.0,
     width: int = 96,
+    breathe: bool = True,
 ) -> str:
     """F015 grid on the left, legacy top-activity list on the right."""
     n_cells = len(nodes)
@@ -176,8 +207,8 @@ def dsc_grid_with_side_list(
     grid_label = markup_fg("grid", 0.5) + markup_fg("\u00a0", 0.05) * (GRID_DISPLAY_WIDTH - 4)
     lines.append(grid_label + sep + markup_fg("top activity", 0.5))
 
-    grid_rows = cell_grid_body(nodes, phase=phase)
-    side_rows = activity_side_list(nodes, phase=phase, limit=GRID_ROWS)
+    grid_rows = cell_grid_body(nodes, phase=phase, breathe=breathe)
+    side_rows = activity_side_list(nodes, phase=phase, breathe=breathe, limit=GRID_ROWS)
     for g, s in zip(grid_rows, side_rows):
         if s:
             lines.append(f"{g}{sep}{s}")
@@ -213,6 +244,7 @@ def _bar_canvas(
     width: int,
     height: int,
     phase: float,
+    breathe: bool = True,
 ) -> str:
     """Legacy / FlyWire: top activity bars + edge sample."""
     lines = [
@@ -224,7 +256,7 @@ def _bar_canvas(
         return "\n".join(lines)
 
     for n in nodes[: max(1, height - 5)]:
-        act = live_activity(n.activity, n.id, phase)
+        act = live_activity(n.activity, n.id, phase, breathe=breathe)
         bar_w = max(1, int(act * 24))
         bar_chars = []
         for i in range(24):
@@ -267,15 +299,16 @@ def canvas_panel(
     width: int = 72,
     height: int = 14,
     phase: float = 0.0,
+    breathe: bool = True,
 ) -> str:
     """
     DSC full population → F015 12×12 equal ● grid (replaces top-K bars).
     FlyWire / partial → activity bars + edge strip.
     """
     if _is_dsc_full_grid(nodes):
-        return dsc_grid_with_side_list(nodes, edges, caption, phase=phase, width=max(width, 96))
+        return dsc_grid_with_side_list(nodes, edges, caption, phase=phase, width=max(width, 96), breathe=breathe)
 
-    return _bar_canvas(nodes, edges, caption, width, height, phase)
+    return _bar_canvas(nodes, edges, caption, width, height, phase, breathe=breathe)
 
 
 def summary_panel(status: dict, phase: float = 0.0) -> str:

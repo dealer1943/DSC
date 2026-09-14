@@ -41,6 +41,8 @@ class FlyWirePackAdapter:
         self._activity = FlyActivityEngine()
         self._field: Optional[BrainField] = None
         self._stim_on = False
+        self._canvas_base: Dict[str, float] = {}
+        self._canvas_neuropil: Dict[str, str] = {}
         self._signals: Dict[str, List[float]] = {
             "n_edges": [],
             "n_nodes": [],
@@ -95,9 +97,14 @@ class FlyWirePackAdapter:
         cols = ["pre_pt_root_id", "post_pt_root_id", "neuropil", "syn_count"]
         self._prog(0.05, f"flywire: opening {path.name}")
         self._log(f"loading {path.name} …")
-        self._prog(0.15, "flywire: reading edge table")
+        try:
+            mb = path.stat().st_size / (1024 * 1024)
+            size_bit = f" (~{mb:.0f} MB)"
+        except OSError:
+            size_bit = ""
+        self._prog(0.12, f"flywire: reading edge table{size_bit} — please wait…")
         self._df = pd.read_feather(path, columns=cols)
-        self._prog(0.65, "flywire: indexing ids")
+        self._prog(0.55, f"flywire: feather loaded · {len(self._df):,} rows — indexing ids")
         # normalize ids to str for TUI
         self._df["pre"] = self._df["pre_pt_root_id"].astype(str)
         self._df["post"] = self._df["post_pt_root_id"].astype(str)
@@ -172,15 +179,26 @@ class FlyWirePackAdapter:
         top = [nid for nid, _ in deg.most_common(MAX_CANVAS_NODES)]
         top_set = set(top)
         max_d = deg.most_common(1)[0][1]
-        self._canvas_nodes = [
-            NodeView(
-                id=nid,
-                label=nid[-6:],
-                kind="neuron",
-                activity=deg[nid] / max_d if max_d else 0.0,
+        self._canvas_base = {}
+        self._canvas_neuropil = {}
+        if "neuropil" in df.columns:
+            for nid in top:
+                hits = df[(df["pre"] == nid) | (df["post"] == nid)]["neuropil"].astype(str)
+                self._canvas_neuropil[nid] = (
+                    str(hits.mode().iloc[0]) if len(hits) and len(hits.mode()) else ""
+                )
+        self._canvas_nodes = []
+        for nid in top:
+            base = float(deg[nid] / max_d) if max_d else 0.0
+            self._canvas_base[nid] = base
+            self._canvas_nodes.append(
+                NodeView(
+                    id=nid,
+                    label=nid[-6:],
+                    kind="neuron",
+                    activity=base,
+                )
             )
-            for nid in top
-        ]
 
         # edges among top nodes, heaviest first
         sub = df[df["pre"].isin(top_set) & df["post"].isin(top_set)]
@@ -225,31 +243,75 @@ class FlyWirePackAdapter:
                 self._signals[key] = hist[-SIGNAL_HISTORY:]
 
 
+
+    def _neuropil_to_region_ids(self, neuropil: str):
+        """Map feather neuropil label → coarse layout region ids (fly_activity)."""
+        from .fly_activity import REGION_ALIASES
+        u = (neuropil or "").strip().upper()
+        if not u:
+            return set()
+        hit = set()
+        for key, ids in REGION_ALIASES.items():
+            if len(key) < 2:
+                continue
+            if key == u or u.startswith(key) or key in u:
+                hit |= set(ids)
+        if any(tag in u for tag in ("ME_", "LO_", "LOP", "LA_", "LP_", "OC_", "AME")):
+            hit |= {1, 2, 3}
+        if "GNG" in u or "GUST" in u:
+            hit |= {9}
+        return hit
+
+    def _sync_canvas_from_activity(self) -> None:
+        """Drive the 48-list from the same region EMA as the BRAIN MAP."""
+        if not self._canvas_nodes:
+            return
+        driven = bool(self._stim_on and self._activity.loaded and self._activity.drive)
+        levels = self._activity._ema if self._activity.loaded else None
+        for node in self._canvas_nodes:
+            base = float(self._canvas_base.get(node.id, node.activity))
+            if not driven or levels is None:
+                node.activity = 0.0  # hard quiet at /rest
+                continue
+            rids = self._neuropil_to_region_ids(self._canvas_neuropil.get(node.id, ""))
+            if rids:
+                glow = max((float(levels[r]) for r in rids if r < len(levels)), default=0.0)
+            else:
+                glow = max(
+                    (float(levels[r]) for r in self._activity.drive if r < len(levels)),
+                    default=0.0,
+                )
+            node.activity = min(1.0, base * (0.22 + 0.78 * glow))
+
     def sample_frame(self, phase: float) -> None:
-        """Live activity tick → BRAIN MAP field + chart breathes."""
+        """Live activity → BRAIN MAP + 48-list from same field (no ambient at rest)."""
         if self._df is None:
             return
-        import math
-        if self._field is not None and self._activity.loaded:
+        driven = bool(self._stim_on and self._activity.loaded and self._activity.drive)
+        if self._field is not None and self._activity.loaded and driven:
             indices = self._activity.tick()
             self._field.tick(indices)
             self._status["spikes_tick"] = self._activity.last_n_spikes
             self._status["field_active"] = self._field.spikes_active()
-            self._status["stim"] = "on" if self._stim_on else "off"
+            self._status["stim"] = "on"
             self._status["activity_ticks"] = self._activity.ticks
+            self._sync_canvas_from_activity()
+        else:
+            # /rest: skip heavy spike tick + field paint (was bogging the sample loop)
+            self._status["stim"] = "on" if (self._stim_on and driven) else "off"
+            self._status["spikes_tick"] = 0
+            if self._activity.loaded:
+                self._sync_canvas_from_activity()
         st = self._status or {}
         n_edges = float(st.get("n_edges") or 0)
         n_nodes = float(st.get("n_nodes") or 0)
         mean_syn = float(st.get("mean_syn") or 0)
         dent = float(st.get("degree_entropy") or 0)
-        e_pulse = 1.0 + 0.012 * math.sin(phase * 1.7)
-        n_pulse = 1.0 + 0.008 * math.sin(phase * 2.1 + 0.4)
-        s_pulse = mean_syn * (1.0 + 0.04 * math.sin(phase * 2.9 + 1.1))
-        d_pulse = dent * (1.0 + 0.015 * math.sin(phase * 1.3 + 2.0))
         spikes = float(st.get("spikes_tick") or 0)
-        live = min(1.0, spikes / 800.0) if spikes else (0.08 + 0.04 * math.sin(phase * 2.6))
+        driven = bool(self._stim_on and self._activity.loaded and self._activity.drive)
+        live = min(1.0, spikes / 800.0) if driven else 0.0
+        self._push_signals(n_edges, n_nodes, mean_syn, dent)
         self._signals.setdefault("live", [])
-        self._push_signals(n_edges * e_pulse, n_nodes * n_pulse, s_pulse, d_pulse)
         hist = self._signals["live"]
         hist.append(live)
         if len(hist) > SIGNAL_HISTORY:
@@ -373,8 +435,9 @@ class FlyWirePackAdapter:
             self._stim_on = False
             self._status["stim"] = "off"
             self._status["spikes_tick"] = 0
+            self._sync_canvas_from_activity()
             self._log("rest — drive+recruit cleared")
-            return ["rest · drive cleared · map should go quiet (then /stim to wake)"]
+            return ["rest · drive cleared · map + neuron list should go quiet (then /stim to wake)"]
         if verb in ("tick", "evolve", "bench", "rollback", "save"):
             return [f"refuse: /{verb} is DSC-only — FLYWIRE is comparison (+ live map)"]
         return [f"unknown verb /{verb}"]

@@ -99,10 +99,13 @@ class FlyActivityEngine:
         return out
 
     def rest(self) -> None:
-        """Hard quiet — clear drive and recruitment so the atlas can decay."""
+        """Hard quiet — clear drive so BRAIN MAP + list can go still."""
         self.drive.clear()
-        self.recruit[:] = 0.0
-        self._ema *= 0.15
+        if hasattr(self, 'volt') and self.volt is not None:
+            self.volt[:] = 0.0
+        if hasattr(self, '_ema') and self._ema is not None:
+            self._ema[:] = 0.0
+        self.last_n_spikes = 0
 
     def stim(
         self,

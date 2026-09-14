@@ -40,6 +40,7 @@ class OpenWormPackAdapter:
         self._activity = WormActivityEngine()
         self._field: Optional[BrainField] = None
         self._stim_on = False
+        self._canvas_base: Dict[str, float] = {}
         self._signals: Dict[str, List[float]] = {
             "n_edges": [],
             "n_nodes": [],
@@ -173,15 +174,14 @@ class OpenWormPackAdapter:
         top = [nid for nid, _ in deg.most_common(MAX_CANVAS_NODES)]
         top_set = set(top)
         max_d = deg.most_common(1)[0][1]
-        self._canvas_nodes = [
-            NodeView(
-                id=nid,
-                label=nid[:8],
-                kind="neuron",
-                activity=deg[nid] / max_d if max_d else 0.0,
+        self._canvas_base = {}
+        self._canvas_nodes = []
+        for nid in top:
+            base = float(deg[nid] / max_d) if max_d else 0.0
+            self._canvas_base[nid] = base
+            self._canvas_nodes.append(
+                NodeView(id=nid, label=nid[:8], kind="neuron", activity=base)
             )
-            for nid in top
-        ]
         sub = df[df["pre"].isin(top_set) & df["post"].isin(top_set)]
         if len(sub) > MAX_CANVAS_EDGES:
             sub = sub.nlargest(MAX_CANVAS_EDGES, "synapses")
@@ -240,30 +240,70 @@ class OpenWormPackAdapter:
         st = self.status()
         return [f"focus → {self._focus or 'all'} · edges={st.get('n_edges')} nodes={st.get('n_nodes')}"]
 
+
+    def _sync_canvas_from_activity(self) -> None:
+        """Drive neuron list from same class EMA / voltage as the worm map."""
+        if not self._canvas_nodes:
+            return
+        driven = bool(
+            self._stim_on
+            and self._activity.loaded
+            and (self._activity.drive or self._activity.name_drive)
+        )
+        levels = self._activity._ema if self._activity.loaded else None
+        for node in self._canvas_nodes:
+            base = float(self._canvas_base.get(node.id, node.activity))
+            if not driven or levels is None:
+                node.activity = 0.0  # hard quiet at /rest (ambient only via breathe/load stim)
+                continue
+            i = self._activity.name_to_i.get(node.id)
+            if i is None:
+                node.activity = base * 0.22
+                continue
+            rid = int(self._activity.region[i]) if i < len(self._activity.region) else 0
+            glow = float(levels[rid]) if rid < len(levels) else 0.0
+            # blend tiny voltage so named stim shows on that cell
+            v = float(self._activity.volt[i]) / 4.0 if i < len(self._activity.volt) else 0.0
+            node.activity = min(1.0, base * (0.22 + 0.78 * max(glow, v)))
+
     def sample_frame(self, phase: float) -> None:
         if self._df is None:
             return
-        import math
-
-        if self._field is not None and self._activity.loaded:
+        driven = bool(
+            self._stim_on
+            and self._activity.loaded
+            and (self._activity.drive or self._activity.name_drive)
+        )
+        if self._field is not None and self._activity.loaded and driven:
             indices = self._activity.tick()
             self._field.tick(indices)
             self._status["spikes_tick"] = self._activity.last_n_spikes
             self._status["field_active"] = self._field.spikes_active()
-            self._status["stim"] = "on" if self._stim_on else "off"
+            self._status["stim"] = "on"
             self._status["activity_ticks"] = self._activity.ticks
+            self._sync_canvas_from_activity()
+        else:
+            self._status["stim"] = "off"
+            self._status["spikes_tick"] = 0
+            if self._activity.loaded:
+                self._sync_canvas_from_activity()
         st = self._status or {}
         n_edges = float(st.get("n_edges") or 0)
         n_nodes = float(st.get("n_nodes") or 0)
         mean_syn = float(st.get("mean_syn") or 0)
         dent = float(st.get("degree_entropy") or 0)
         spikes = float(st.get("spikes_tick") or 0)
-        live = min(1.0, spikes / 80.0) if spikes else (0.08 + 0.04 * math.sin(phase * 2.6))
+        driven = bool(
+            self._stim_on
+            and self._activity.loaded
+            and (self._activity.drive or self._activity.name_drive)
+        )
+        live = min(1.0, spikes / 80.0) if driven else 0.0
         for key, val in (
-            ("n_edges", n_edges * (1.0 + 0.012 * math.sin(phase * 1.7))),
-            ("n_nodes", n_nodes * (1.0 + 0.008 * math.sin(phase * 2.1))),
-            ("mean_syn", mean_syn * (1.0 + 0.04 * math.sin(phase * 2.9))),
-            ("degree_entropy", dent * (1.0 + 0.015 * math.sin(phase * 1.3))),
+            ("n_edges", n_edges),
+            ("n_nodes", n_nodes),
+            ("mean_syn", mean_syn),
+            ("degree_entropy", dent),
             ("live", live),
             ("spikes_tick", spikes),
         ):
@@ -309,19 +349,33 @@ class OpenWormPackAdapter:
             h = self._signals[name]
             return [f"{name}: n={len(h)} last={h[-1] if h else '—'}"]
         if verb == "stim":
-            if self._field is None:
-                return ["refuse: activity field not loaded"]
-            regions = list(args) if args else ["amphid"]
-            strength = 0.45
+            if self._field is None or not self._activity.loaded:
+                return ["refuse: activity field not loaded — /load openworm first"]
+            strength = 0.55
+            regions: list = []
             if args:
                 try:
                     strength = float(args[-1])
-                    regions = args[:-1] or ["amphid"]
+                    regions = list(args[:-1])
                 except ValueError:
                     regions = list(args)
+            if not regions:
+                regions = ["amphid", "ring"]
+            already = bool(self._stim_on and (self._activity.drive or self._activity.name_drive))
             ids = self._activity.stim(regions, strength=strength)
             self._stim_on = True
-            return [f"stim on · {ids} · strength={strength:.2f}"]
+            indices = self._activity.tick()
+            self._field.tick(indices)
+            self._status["stim"] = "on"
+            self._status["spikes_tick"] = self._activity.last_n_spikes
+            self._sync_canvas_from_activity()
+            note = "boost" if already else "on"
+            return [
+                f"stim {note} · {ids} · strength={strength:.2f}",
+                ("(already driving — kicked louder; /rest then /stim for cold start)")
+                if already
+                else "(watch worm map + neuron list)",
+            ]
         if verb == "pulse":
             if self._field is None:
                 return ["refuse: activity field not loaded"]
@@ -331,11 +385,15 @@ class OpenWormPackAdapter:
             self._stim_on = True
             return [f"pulse {region} · {ids} · strength={strength:.2f}"]
         if verb == "rest":
-            if self._field is None:
+            if self._field is None or not self._activity.loaded:
                 return ["refuse: activity field not loaded"]
             self._activity.rest()
+            self._field.reset()
             self._stim_on = False
-            return ["rest · drive cleared · watch the map decay"]
+            self._status["stim"] = "off"
+            self._status["spikes_tick"] = 0
+            self._sync_canvas_from_activity()
+            return ["rest · drive cleared · map + neuron list should go quiet"]
         if verb in ("tick", "evolve", "bench", "rollback", "save"):
             return [f"refuse: /{verb} is DSC-only — OPENWORM is comparison (+ live map)"]
         return [f"unknown verb /{verb}"]

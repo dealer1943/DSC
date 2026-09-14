@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 from textual import on
+from textual import work
 from textual.app import App, ComposeResult
 from textual.command import CommandPalette
 from textual.binding import Binding
@@ -177,6 +178,8 @@ class OperatorConsole(App):
         self.sample_hz = DEFAULT_SAMPLE_HZ
         self._phase = 0.0
         self._sample_timer: Optional[Timer] = None
+        self._sampling_paused: bool = False
+        self._bio_phase_skip: int = 0
         self._last_vm: Optional[ViewModel] = None
 
     def compose(self) -> ComposeResult:
@@ -255,14 +258,18 @@ class OperatorConsole(App):
         self._sample_timer = self.set_interval(interval, self._on_sample)
 
     def _on_sample(self) -> None:
-        if self.adapter is None:
+        if self.adapter is None or self._sampling_paused:
             return
         self._phase += 1.0 / self.sample_hz
         sample_frame = getattr(self.adapter, "sample_frame", None)
         if callable(sample_frame):
             sample_frame(self._phase)
         self._last_vm = self.adapter.snapshot()
-        self._paint(self._last_vm, phase=self._phase, quiet=True)
+        # At rest, throttle BRAIN MAP rebuild — canvas sample was the bog.
+        st = self._last_vm.status if isinstance(self._last_vm.status, dict) else {}
+        stim = st.get("stim")
+        quiet_bio = stim in ("off", False)
+        self._paint(self._last_vm, phase=self._phase, quiet=True, skip_bio=quiet_bio)
 
     def _banner(self) -> Banner:
         return self.query_one("#banner", Banner)
@@ -312,7 +319,7 @@ class OperatorConsole(App):
     def on_menu_closed(self, event: CommandPalette.Closed) -> None:
         self._focus_cmd()
 
-    def _paint(self, vm: ViewModel, phase: float = 0.0, quiet: bool = False) -> None:
+    def _paint(self, vm: ViewModel, phase: float = 0.0, quiet: bool = False, skip_bio: bool = False) -> None:
         self.mode = vm.mode
         self._banner().set_mode(
             vm.mode,
@@ -320,8 +327,16 @@ class OperatorConsole(App):
             f"· {vm.caption[:48]}",
             hz=self.sample_hz,
         )
+        # Breathe only while stim/live is on. ViewModel modes are uppercase.
+        st = vm.status if isinstance(vm.status, dict) else {}
+        stim = st.get("stim")
+        mode = (vm.mode or "").upper()
+        if mode in ("FLYWIRE", "OPENWORM", "DSC") and stim is not None:
+            breathe = (stim == "on" or stim is True)
+        else:
+            breathe = True
         self.query_one("#canvas", Static).update(
-            canvas_panel(vm.nodes, vm.edges, vm.caption, phase=phase)
+            canvas_panel(vm.nodes, vm.edges, vm.caption, phase=phase, breathe=breathe)
         )
         bio = self.query_one("#biology", Static)
         focus = None
@@ -329,19 +344,23 @@ class OperatorConsole(App):
             focus = vm.status.get("focus")
         if should_show_biology(vm.mode):
             bio.add_class("visible")
-            live = None
-            if self.adapter is not None and hasattr(self.adapter, "brain_map_markup"):
-                live = self.adapter.brain_map_markup(
-                    focus=focus if isinstance(focus, str) else None
-                ) or None
-            bio.update(
-                biology_panel(
-                    vm.mode,
-                    focus=focus if isinstance(focus, str) else None,
-                    phase=phase,
-                    live_markup=live,
+            if skip_bio:
+                # keep last BRAIN MAP markup; don't rebuild every sample at /rest
+                pass
+            else:
+                live = None
+                if self.adapter is not None and hasattr(self.adapter, "brain_map_markup"):
+                    live = self.adapter.brain_map_markup(
+                        focus=focus if isinstance(focus, str) else None
+                    ) or None
+                bio.update(
+                    biology_panel(
+                        vm.mode,
+                        focus=focus if isinstance(focus, str) else None,
+                        phase=phase,
+                        live_markup=live,
+                    )
                 )
-            )
         else:
             bio.remove_class("visible")
             bio.update("")
@@ -397,6 +416,37 @@ class OperatorConsole(App):
             self._paint(self._last_vm, phase=self._phase, quiet=True)
 
 
+
+    @work(thread=True, exclusive=True)
+    def _load_flywire_bg(self, pack: Optional[str] = None) -> None:
+        """Background FlyWire load so the progress bar can paint during feather IO."""
+        def on_prog(frac: float, message: str) -> None:
+            self.call_from_thread(self._show_progress, frac, message)
+
+        try:
+            adapter = flywire_pack.create(pack)
+            adapter.set_progress(on_prog)
+            lines = adapter.load(pack)
+            self.call_from_thread(self._finish_bg_load, adapter, lines)
+        except Exception as exc:
+            self.call_from_thread(self._fail_bg_load, f"{type(exc).__name__}: {exc}")
+
+    def _finish_bg_load(self, adapter, lines) -> None:
+        self.adapter = adapter
+        self._sampling_paused = False
+        self._show_progress(1.0, "done")
+        self.set_timer(0.6, self._hide_progress)
+        for line in lines or []:
+            self._term(line)
+        self._phase = 0.0
+        self._last_vm = self.adapter.snapshot()
+        self._paint(self._last_vm, phase=self._phase)
+
+    def _fail_bg_load(self, message: str) -> None:
+        self._sampling_paused = False
+        self._term(f"load failed: {message}")
+        self._hide_progress()
+
     def _show_progress(self, frac: float, message: str) -> None:
         box = self.query_one("#loadprog", Vertical)
         box.add_class("visible")
@@ -439,18 +489,22 @@ class OperatorConsole(App):
                 self._term("usage: /load flywire|dsc|openworm [path]")
                 return
 
+            # FlyWire feather is ~800MB — load off the UI thread so the progress bar moves.
+            if kind in ("flywire", "fly", "fw"):
+                pack = rest[0] if rest else None
+                self._term("loading FlyWire (~800MB feather) in background — progress bar should move…")
+                self._sampling_paused = True  # canvas sample was bogging the load UI
+                self._show_progress(0.02, "starting FlyWire load…")
+                self._load_flywire_bg(pack)
+                return
+
             def on_prog(frac: float, message: str) -> None:
                 self._show_progress(frac, message)
 
             self._show_progress(0.0, "starting load…")
             lines = []
             try:
-                if kind in ("flywire", "fly", "fw"):
-                    pack = rest[0] if rest else None
-                    self.adapter = flywire_pack.create(pack)
-                    self.adapter.set_progress(on_prog)
-                    lines = self.adapter.load(pack)
-                elif kind in ("openworm", "worm", "celegans", "c302"):
+                if kind in ("openworm", "worm", "celegans", "c302"):
                     pack = rest[0] if rest else None
                     self.adapter = openworm_pack.create(pack)
                     self.adapter.set_progress(on_prog)

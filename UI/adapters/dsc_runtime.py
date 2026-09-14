@@ -32,6 +32,7 @@ class DscRuntimeAdapter:
         self.revision = "unloaded"
         self._rt = None
         self._events: List[str] = []
+        self._live_drive = True
         self._progress: Optional[Callable[[float, str], None]] = None
 
     def set_progress(self, cb: Optional[Callable[[float, str], None]]) -> None:
@@ -71,6 +72,7 @@ class DscRuntimeAdapter:
             return [f"refuse: missing checkpoint in {active_label(self.active_dir)}"]
 
         self.revision = self._rt.revision
+        self._live_drive = True
         self._events.extend(self._rt.events[-20:])
         return [
             f"DSC loaded · {active_label(self.active_dir)} · {self.revision}",
@@ -85,20 +87,25 @@ class DscRuntimeAdapter:
     def snapshot(self) -> ViewModel:
         if self._rt is None:
             return ViewModel(mode="EMPTY", revision="unloaded", caption="not loaded")
-        st = self._rt.status()
+        st = dict(self._rt.status())
+        st["stim"] = "on" if self._live_drive else "off"
         nodes_raw = self._rt.canvas_nodes(order="id")  # all cells for F015 grid
         # edges: sample among full population for the strip under the grid
         edges_raw = self._rt.canvas_edges([n["id"] for n in nodes_raw], 80)
-        nodes = [
-            NodeView(
-                id=n["id"],
-                label=n["label"],
-                kind=n["kind"],
-                activity=n["activity"],
-                utility=n.get("utility"),
+        nodes = []
+        for n in nodes_raw:
+            act = float(n["activity"])
+            if not self._live_drive:
+                act = 0.0  # /rest → grid does nothing
+            nodes.append(
+                NodeView(
+                    id=n["id"],
+                    label=n["label"],
+                    kind=n["kind"],
+                    activity=act,
+                    utility=n.get("utility"),
+                )
             )
-            for n in nodes_raw
-        ]
         edges = [
             EdgeView(src=e["src"], dst=e["dst"], weight=e["weight"], meta=e["meta"])
             for e in edges_raw
@@ -122,13 +129,16 @@ class DscRuntimeAdapter:
         return ["focus: DSC grid shows all cells (F015); STEM vs typed uses differentiation (F004)"]
 
     def sample_frame(self, phase: float) -> None:
-        """Live pulse: one quiet tick every few frames keeps signals moving."""
+        """Live pulse while stim/on; /rest freezes charts (push quiet zeros once-ish)."""
         if self._rt is None:
             return
-        # light tick every ~1s equivalent depends on sample hz; always nudge activity display
-        # optional micro-tick disabled by default to avoid racing harness — just re-push activity
-        act = float(self._rt.pop.activity.mean())
         import math
+        if not self._live_drive:
+            # keep a quiet baseline so sparklines show rest, not a frozen pre-rest wave
+            self._rt._push("live", 0.0)
+            self._rt._push("activity_mean", 0.0)
+            return
+        act = float(self._rt.pop.activity.mean())
         live = 0.5 + 0.5 * math.sin(phase * 2.6)
         self._rt._push("live", live)
         self._rt._push("activity_mean", act * (0.85 + 0.15 * live))
@@ -191,6 +201,34 @@ class DscRuntimeAdapter:
             if self._rt is None:
                 return ["refuse: nothing loaded"]
             return self._rt.rollback()
+        if verb == "rest":
+            if self._rt is None:
+                return ["refuse: nothing loaded"]
+            self._live_drive = False
+            return [
+                "rest · live display quiet",
+                "(DSC has no region drive — /rest freezes the grid/charts; /stim or /tick wakes)",
+            ]
+        if verb == "stim":
+            if self._rt is None:
+                return ["refuse: nothing loaded"]
+            self._live_drive = True
+            try:
+                self._rt.tick(1)
+            except Exception:
+                pass
+            # seed charts so sparklines leave the rest-flat immediately
+            try:
+                import math
+                act = float(self._rt.pop.activity.mean())
+                self._rt._push("live", 0.85)
+                self._rt._push("activity_mean", act)
+            except Exception:
+                pass
+            note = ""
+            if args:
+                note = " · (region args ignored on DSC — use flywire for /stim optic|AL|…)"
+            return [f"stim on · live display wake{note}"]
         if verb == "bench":
             return ["refuse: /bench not wired — see BENCHMARKS/"]
         return [f"unknown verb /{verb}"]

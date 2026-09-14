@@ -91,9 +91,12 @@ class WormActivityEngine:
         return out
 
     def rest(self) -> None:
+        """Hard quiet — clear drive and voltage so atlas/list can go still."""
         self.drive.clear()
         self.name_drive.clear()
-        self.volt *= 0.3
+        self.volt[:] = 0.0
+        self._ema[:] = 0.0
+        self.last_n_spikes = 0
 
     def stim(self, regions: Sequence[str], strength: float = 0.4) -> List[str]:
         hit: Set[int] = set()
@@ -114,9 +117,20 @@ class WormActivityEngine:
                 named.update(pref[:40])
         if not hit and not named:
             hit = {1}  # default amphid/sensory
+        strength = float(np.clip(strength, 0.05, 0.95))
         for rid in hit:
-            self.drive[rid] = float(np.clip(strength, 0.05, 0.95))
+            prev = float(self.drive.get(rid, 0.0))
+            self.drive[rid] = max(prev, strength)
+            pool = self.by_class.get(rid)
+            if pool is not None and len(pool):
+                k = int(min(len(pool), max(4, strength * 20)))
+                choose = self.rng.choice(pool, size=k, replace=False)
+                self.volt[choose] = np.clip(self.volt[choose] + 1.2, 0.0, 4.0)
         self.name_drive |= {n.upper() for n in named}
+        for nm in list(named):
+            i = self.name_to_i.get(nm.upper()) or self.name_to_i.get(nm)
+            if i is not None:
+                self.volt[i] = min(4.0, float(self.volt[i]) + 1.4)
         return sorted({str(r) for r in hit}) + sorted(self.name_drive)[:8]
 
     def pulse(self, region: str, strength: float = 0.6) -> List[str]:

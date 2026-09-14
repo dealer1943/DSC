@@ -84,7 +84,7 @@ Next: Profile D matched subgraph; harden B016 pass rule so C-null alone cannot o
 - `BENCHMARKS/B016_flywire_efficiency_parity.md` — efficiency-vs-FlyWire bench spec (blueprint for future tool)
 - `PAPERS/` — RSI survey PDF + layman cliff notes (`*_notes.md`); maps to F006/F009/R001 (verifier isolation, rollback, meta-improvement)
 - `PAPERS/2609.10715v1_archpreview_techreport*` — NCP-ArchPreview cliff notes; dual-resolution (token+concept) + VQ interface lessons for F003/F007/F010/R001
-- Empty / light: `ISSUES/`, `DIAGNOSTICS/` (UI + MODEL scaffolds present)
+- `ISSUES/`: I001 fixed (canvas/stim/rest + FlyWire bg load + chart wake). `DIAGNOSTICS/` still light.
 
 ## Feature ↔ benchmark map (mechanism)
 
