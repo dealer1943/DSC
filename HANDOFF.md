@@ -125,3 +125,7 @@ Next: Profile D matched subgraph; harden B016 pass rule so C-null alone cannot o
 2. One slice only; finish and document before context dies.  
 3. Update this status table before stop.  
 4. Prefer files over chat for lasting decisions.
+
+## Standings
+
+- Standings sweep `20260914T031845Z` → `BENCHMARKS/runs/STANDINGS_20260914T031845Z.md`.
