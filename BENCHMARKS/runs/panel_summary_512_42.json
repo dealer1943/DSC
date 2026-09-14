@@ -1,0 +1,47 @@
+{
+  "n": 512,
+  "seed": 42,
+  "family": "preferential",
+  "panel": [
+    {
+      "neuropil": "GNG",
+      "run_id": "stressD_20260914T025211Z_n512_GNG_preferential",
+      "fly_wins": 0,
+      "dsc_wins": 6,
+      "dsc_task": 0.10129587048610823,
+      "fly_task": 0.10133548839677353,
+      "md": "stressD_20260914T025211Z_n512_GNG_preferential.md",
+      "ok": true
+    },
+    {
+      "neuropil": "ME_R",
+      "run_id": "stressD_20260914T025215Z_n512_ME_R_preferential",
+      "fly_wins": 6,
+      "dsc_wins": 0,
+      "dsc_task": 0.10117812871843576,
+      "fly_task": 0.10117564743301982,
+      "md": "stressD_20260914T025215Z_n512_ME_R_preferential.md",
+      "ok": true
+    },
+    {
+      "neuropil": "LO_R",
+      "run_id": "stressD_20260914T025218Z_n512_LO_R_preferential",
+      "fly_wins": 5,
+      "dsc_wins": 1,
+      "dsc_task": 0.1012718861366963,
+      "fly_task": 0.1012431361681741,
+      "md": "stressD_20260914T025218Z_n512_LO_R_preferential.md",
+      "ok": true
+    },
+    {
+      "neuropil": "AVLP_R",
+      "run_id": "stressD_20260914T025221Z_n512_AVLP_R_preferential",
+      "fly_wins": 2,
+      "dsc_wins": 4,
+      "dsc_task": 0.10143253894414497,
+      "fly_task": 0.10125344045834397,
+      "md": "stressD_20260914T025221Z_n512_AVLP_R_preferential.md",
+      "ok": true
+    }
+  ]
+}
