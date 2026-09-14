@@ -111,6 +111,7 @@ def run_stress(
     task_lag: int | None = None,
     task_noise: float | None = None,
     bilayer: bool = False,
+    talk_board: bool = False,
 ) -> dict[str, Any]:
     from dsc import defaults
     from dsc.substrate import generate_substrate
@@ -155,6 +156,8 @@ def run_stress(
             _override("TASK_NOISE", float(task_noise))
         if bilayer:
             _override("BILAYER", True)
+        if talk_board:
+            _override("TALK_BOARD", True)
 
         for rt in (rt_er, rt_fly):
             # rebuild harness with possibly overridden lag/noise
@@ -195,6 +198,7 @@ def run_stress(
         "dsc_family": dsc_sub.meta.get("family", dsc_family),
         "hub_aware": bool(__import__("dsc.defaults", fromlist=["HUB_AWARE"]).HUB_AWARE),
         "bilayer": bool(bilayer),
+        "talk_board": bool(talk_board),
         "prune_stress": bool(prune_stress),
         "task_lag": int(task_lag) if task_lag is not None else 1,
         "task_noise": float(task_noise) if task_noise is not None else 0.05,
@@ -297,6 +301,8 @@ def main(argv=None) -> int:
                     help="Use lag-1/noise=0.05 instead of Profile D hard default")
     ap.add_argument("--bilayer", action="store_true",
                     help="F029 folded-sheet elevated state channel")
+    ap.add_argument("--talk-board", action="store_true",
+                    help="F030 shared talk bitset + edge-masked glance")
     args = ap.parse_args(argv)
     report = run_stress(
         n=args.n,
@@ -312,6 +318,7 @@ def main(argv=None) -> int:
         task_lag=(1 if args.easy_harness else (args.task_lag if args.task_lag is not None else 2)),
         task_noise=(0.05 if args.easy_harness else (args.task_noise if args.task_noise is not None else 0.20)),
         bilayer=bool(args.bilayer),
+        talk_board=bool(args.talk_board),
     )
     _append_ledger(report, Path(args.out) / "stress_ledger.jsonl")
     print(json.dumps({
@@ -320,6 +327,7 @@ def main(argv=None) -> int:
         "dsc_family": report.get("dsc_family"),
         "hub_aware": report.get("hub_aware"),
         "bilayer": report.get("bilayer"),
+        "talk_board": report.get("talk_board"),
         "scoreboard": report["scoreboard"],
         "dsc_task_error": (report.get("dsc") or report["er"])["task_error"],
         "fly_task_error": report["fly_adj"]["task_error"],

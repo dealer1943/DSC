@@ -97,3 +97,12 @@ BILAYER = False
 BILAYER_MIX = 0.35          # weight on elevated (upper-aligned) view
 BILAYER_EMA = 0.25          # EMA on elevated channel
 
+# Talk board / chat-room presence (F030) — opt-in A/B
+# Layman: shared lobby lights — who is talking this beat.
+# Tech: one bool/bit vector of length N; edge-masked glance into messages.
+# Default off. No neuropil hardcodes.
+TALK_BOARD = False
+TALK_THRESH = 0.02          # activity above this ⇒ bit on (prev tick)
+TALK_MIX = 0.30             # weight of edge-masked talking-neighbor hidden
+TALK_GLOBAL = 0.05          # light global talk_frac into inject (building volume)
+

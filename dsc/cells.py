@@ -169,6 +169,36 @@ def step_population(
             pop.elevated = (1.0 - alpha) * prev + alpha * elevated
         messages = messages + bilayer_mix * pop.elevated
 
+
+    # F030 talk board: shared who's-talking presence + edge-masked glance.
+    # Build once from prev-tick activity (shared buffer). Each cell only
+    # mixes hidden from in-neighbors whose talk bit is on — O(edges), not O(N²).
+    if bool(getattr(defaults, "TALK_BOARD", False)):
+        thresh = float(getattr(defaults, "TALK_THRESH", 0.05))
+        talking = np.nan_to_num(pop.activity) > thresh
+        pop.talk_board = talking
+        pop.talk_packed = np.packbits(talking.astype(np.uint8))
+        talk_frac = float(talking.mean()) if n else 0.0
+        inject = inject + float(getattr(defaults, "TALK_GLOBAL", 0.05)) * np.tanh(talk_frac * 3.0)
+        talk_h = h * talking.astype(np.float64)[:, None]
+        if use_sparse:
+            src, dst = sub.edge_index()
+            glance = np.zeros_like(h)
+            talk_in = np.zeros(n, dtype=np.float64)
+            if len(src):
+                m = talking[src]
+                if np.any(m):
+                    s_m, d_m = src[m], dst[m]
+                    np.add.at(glance, d_m, talk_h[s_m])
+                    np.add.at(talk_in, d_m, 1.0)
+            glance = glance / np.clip(talk_in, 1.0, None)[:, None]
+        else:
+            # A[j, i] = 1 ⇒ j→i (matches einsum "ji" used above)
+            talk_in = (A * talking.astype(np.float64)[:, None]).sum(axis=0)
+            glance = np.einsum("ji,jh->ih", A, talk_h)
+            glance = glance / np.clip(talk_in, 1.0, None)[:, None]
+        messages = messages + float(getattr(defaults, "TALK_MIX", 0.30)) * glance
+
     base = np.tanh(np.nan_to_num(messages + pop.bias + inject))
 
     # per-type responses
