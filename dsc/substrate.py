@@ -211,19 +211,25 @@ def _sheet_hub(
     n: int,
     target_edges: int,
     rng: np.random.Generator,
+    genes: Optional[Dict[str, float]] = None,
 ) -> np.ndarray:
     """Procedural sheet + hub prior (F028) — one rule, scale with N/edges only.
 
-    Layman (state-trading): one order-book microstructure rule that still works
-    when the venue changes. Geometry + preferential attachment; no neuropil-tuned
+    Layman: one local generative rule that still works
+    when the graph scale changes. Geometry + preferential attachment; no neuropil-tuned
     magic numbers copied from FlyWire ME_R.
 
     Tech:
       - Embed nodes on a cylinder (angle θ, height z) from index alone.
-      - Grow directed edges with spatial kernel × mild preferential (α=β=1).
-      - Kernel length-scales from N only (σ_θ, σ_z ~ 1/√L, L~√N/2).
+      - Grow directed edges with spatial kernel × preferential (α/β default 1).
+      - Kernel length-scales from N (σ_θ, σ_z ~ 1/√L); optional genes scale σ/α/β/p_recip.
       - Light reciprocal completion with p_recip from density, not from fly %.
       - Fill exactly to target_edges; then density cap.
+
+    genes (R005, optional, from regime r — never neuropil strings):
+      alpha, beta: preferential exponents on (1+out)/(1+in)
+      sigma_scale: multiply σ_θ and σ_z (<1 ⇒ tighter/local)
+      p_recip_scale: multiply density-scaled p_recip
     """
     adj = np.zeros((n, n), dtype=np.uint8)
     # cylinder embedding from index — procedural, not atlas-registered
@@ -239,13 +245,23 @@ def _sheet_hub(
         m = len(idxs)
         theta[idxs] = (np.arange(m) / max(1, m)) * (2.0 * np.pi)
 
-    # length scales from geometry only
-    sigma_z = 1.0 / max(1.0, np.sqrt(n_layers))
-    sigma_theta = 2.0 * np.pi / max(4.0, np.sqrt(max(n // n_layers, 4)))
+    g = genes or {}
+    alpha = float(g.get("alpha", 1.0))
+    beta = float(g.get("beta", 1.0))
+    sigma_scale = float(g.get("sigma_scale", 1.0))
+    p_recip_scale = float(g.get("p_recip_scale", 1.0))
+    alpha = float(np.clip(alpha, 0.25, 3.0))
+    beta = float(np.clip(beta, 0.25, 3.0))
+    sigma_scale = float(np.clip(sigma_scale, 0.25, 2.0))
+    p_recip_scale = float(np.clip(p_recip_scale, 0.5, 2.0))
+
+    # length scales from geometry only; genes may tighten/widen
+    sigma_z = (1.0 / max(1.0, np.sqrt(n_layers))) * sigma_scale
+    sigma_theta = (2.0 * np.pi / max(4.0, np.sqrt(max(n // n_layers, 4)))) * sigma_scale
     # reciprocity from expected degree, not from a measured fly fraction
     mean_deg = max(1.0, target_edges / max(1, n))
     p_recip = float(1.0 / (1.0 + mean_deg))  # denser → less forced reciprocity
-    p_recip = float(np.clip(p_recip, 0.05, 0.35))
+    p_recip = float(np.clip(p_recip * p_recip_scale, 0.05, 0.45))
 
     out_d = np.zeros(n, dtype=np.float64)
     in_d = np.zeros(n, dtype=np.float64)
@@ -256,12 +272,12 @@ def _sheet_hub(
     # precompute for speed: sample candidates
     while placed < target_edges and guard < max_guard:
         guard += 1
-        # source ~ (1 + out)^1
-        w_src = 1.0 + out_d
+        # source ~ (1 + out)^alpha
+        w_src = (1.0 + out_d) ** alpha
         w_src = w_src / w_src.sum()
         s = int(rng.choice(n, p=w_src))
 
-        # targets: spatial kernel × (1+in)
+        # targets: spatial kernel × (1+in)^beta
         dtheta = np.abs(theta - theta[s])
         dtheta = np.minimum(dtheta, 2.0 * np.pi - dtheta)
         dz = np.abs(z - z[s])
@@ -271,7 +287,7 @@ def _sheet_hub(
         spat[adj[s] > 0] = 0.0
         if spat.sum() <= 0:
             continue
-        w_tgt = spat * (1.0 + in_d)
+        w_tgt = spat * ((1.0 + in_d) ** beta)
         w_tgt = w_tgt / w_tgt.sum()
         t = int(rng.choice(n, p=w_tgt))
         if s == t or adj[s, t]:
@@ -306,7 +322,7 @@ def _sheet_hub(
             if s != t and not adj[s, t]:
                 adj[s, t] = 1
             continue
-        w = spat * (1.0 + in_d)
+        w = spat * ((1.0 + in_d) ** beta)
         w = w / w.sum()
         t = int(rng.choice(n, p=w))
         if s != t and not adj[s, t]:
@@ -331,6 +347,7 @@ def generate_substrate(
     progress: Optional[ProgressCb] = None,
     family: str = "erdos_renyi_directed",
     target_edges: Optional[int] = None,
+    sheet_genes: Optional[Dict[str, float]] = None,
 ) -> Substrate:
     """Build a sparse directed substrate.
 
@@ -384,7 +401,7 @@ def generate_substrate(
     elif fam == "laminar_directed":
         adj = _laminar(n, int(target_edges), rng)
     else:
-        adj = _sheet_hub(n, int(target_edges), rng)
+        adj = _sheet_hub(n, int(target_edges), rng, genes=sheet_genes)
 
     emit(progress, 0.7, "substrate: enforcing invariants")
     dens = float(adj.sum() / max(1, n * (n - 1)))
@@ -401,6 +418,12 @@ def generate_substrate(
     if fam in ("laminar_directed", "sheet_hub_directed"):
         meta["n_layers"] = int(np.clip(round(np.sqrt(n) / 2), 4, 16))
         meta["procedural"] = fam == "sheet_hub_directed"
+    if fam == "sheet_hub_directed" and sheet_genes:
+        meta["sheet_genes"] = {
+            k: float(sheet_genes[k])
+            for k in ("alpha", "beta", "sigma_scale", "p_recip_scale")
+            if k in sheet_genes
+        }
     emit(progress, 1.0, f"substrate: done · edges={meta['n_edges']} density={dens:.4f}")
     return Substrate(adj=adj, meta=meta)
 

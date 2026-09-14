@@ -170,6 +170,25 @@ def step_population(
         messages = np.einsum("ji,jh->ih", A, h)
         messages = messages / in_deg[:, None]
 
+    # R005 soft local bias: blend degree-mean/hub gather toward sheet-nearest in-neighbor.
+    # Continuous knob (LOCAL_GATHER_MIX); skips when NEAREST_EXACT already owns the path.
+    local_mix = float(getattr(defaults, "LOCAL_GATHER_MIX", 0.0))
+    if local_mix > 0.0 and not nearest_exact:
+        local_mix = float(np.clip(local_mix, 0.0, 1.0))
+        src, dst = sub.edge_index()
+        nearest_msgs = h.copy()
+        if len(src):
+            best = np.full(n, -1, dtype=np.int32)
+            best_score = np.full(n, np.inf, dtype=np.float64)
+            for s, d in zip(src.tolist(), dst.tolist()):
+                score = float(abs(int(s) - int(d)))
+                if score < best_score[d]:
+                    best_score[d] = score
+                    best[d] = int(s)
+            has = best >= 0
+            nearest_msgs[has] = h[best[has]]
+        messages = (1.0 - local_mix) * messages + local_mix * nearest_msgs
+
     # F029 bilayer: fold sheet — each cell also sees an aligned "one layer up" state.
     # Layers from node index only (procedural); works on any adjacency family.
     if bool(getattr(defaults, "BILAYER", False)):

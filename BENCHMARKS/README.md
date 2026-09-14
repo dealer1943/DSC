@@ -25,6 +25,8 @@ Stubs first; harness code later. Each file states what is measured and why the m
 | B014 | `B014_ood_noise_robustness.md` | system / LLM-analog | full DSC |
 | B015 | `B015_calibration_and_seed_stability.md` | system / LLM-analog | full DSC |
 | B016 | `B016_flywire_efficiency_parity.md` | system / comparison | F011 + R002; blueprint for efficiency tool |
+| B017 | `B017_profile_d_random_seed_panel.md` | system / comparison | F021 Profile D · random seeds 1–100 |
+| B018 | `B018_n_state_curve.md` | system / established-state | discrete K∈{10,50,100} next-state tables · ME_R |
 
 3. **B016+** — cross-artifact / biological comparison efficiency.
 
@@ -34,6 +36,7 @@ Stubs first; harness code later. Each file states what is measured and why the m
 | B006 | `PYTHONPATH=. python -m tools.benches.b006_selection` |
 | B010 | `PYTHONPATH=. python -m tools.benches.b010_task_footprint` |
 | B016 | `PYTHONPATH=. python -m tools.flywire_efficiency_bench` |
+| B017 | `PYTHONPATH=. python -m tools.b017_random_seed_panel` |
 | F020 | `PYTHONPATH=. python -m tools.dev_run` |
 
 Reports: `BENCHMARKS/runs/`. Meta log: `BENCHMARKS/meta/r001_assay_log.jsonl`.

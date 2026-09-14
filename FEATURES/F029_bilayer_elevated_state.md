@@ -7,7 +7,7 @@ pairs_with: [F023, F027, F028]
 updated: 2026-09-14
 ---
 
-## Layman (state-trading)
+## Layman
 Fold the sheet once: each cell keeps its usual local book **and** a second view from the desk one floor up (aligned seat). Same rule on every venue — index-derived floors, not a fly atlas. Opt-in A/B (`--bilayer`); default off so we do not bake an unproven fold into the stack.
 
 ## Technical

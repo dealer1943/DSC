@@ -9,6 +9,7 @@ import numpy as np
 
 from dsc import defaults
 from dsc.cells import Population, init_population, step_population
+from dsc.state_table import maybe_make_state_table
 from dsc.harness import TemporalHarness, build_harness
 from dsc.persist import load_active, save_active, save_model_bundle, sanitize_model_name
 from dsc.progress import ProgressCb, emit
@@ -33,6 +34,7 @@ class DscRuntime:
     last_good: Optional[PopSnapshot] = None
     evolve_count: int = 0
     latent: LatentPool = field(default_factory=LatentPool)
+    state_table: Any = field(default_factory=maybe_make_state_table)
 
     def _push(self, name: str, value: float, maxlen: int = 64) -> None:
         h = self.signal_hist.setdefault(name, [])
@@ -54,7 +56,12 @@ class DscRuntime:
         for _ in range(max(1, n)):
             x, y = self.harness.next_input_target()
             y_hat = step_population(self.pop, self.sub, x)
+            st = getattr(self, "state_table", None)
+            if st is not None:
+                y_hat = st.observe_and_blend(self.pop, y_hat, err=float(getattr(self.harness, "last_err", 0.0)))
             err = self.harness.score(y_hat, y)
+            if st is not None:
+                st.update_outcome(y)
             reward = -err
             prev_u = self.pop.utility.copy()
             last = update_utilities(self.pop, reward)

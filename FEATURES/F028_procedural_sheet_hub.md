@@ -7,8 +7,8 @@ pairs_with: [F001, F021, F022, F027]
 updated: 2026-09-14
 ---
 
-## Layman (state-trading intuition)
-Don’t hardcode the fly’s medulla order book. Ship **one microstructure rule** that still works when the venue changes: geometry (sheets on a cylinder) + preferential attachment + light two-way quotes scaled by density. Same generator for GNG, ME_R, LO_R — only `N` and `target_edges` change. Adaptation stays in **cell state** (utility, types, absorb), not in neuropil `if` branches.
+## Layman
+Don’t hardcode the fly’s medulla wiring constants. Ship **one procedural generative rule** that still works when the graph changes: geometry (sheets on a cylinder) + preferential attachment + light reciprocal edges scaled by density. Same generator for GNG, ME_R, LO_R — only `N` and `target_edges` change. Adaptation stays in **cell state** (utility, types, absorb), not in neuropil `if` branches.
 
 ## Non-goals (overfit guards)
 - No constants copied from measured FlyWire ME_R (reciprocity ≈30%, max-deg 93, clustering 0.17, …).
@@ -43,4 +43,4 @@ PYTHONPATH=. python -m tools.flywire_stress --n 512 --neuropil GNG --dsc-family 
 | LO_R | sheet_hub | 2 | 4 | 0.101399 | 0.101243 | scoreboard DSC; task still fly |
 
 ### Anti-overfit read
-Sheet-hub is a better *ME-shaped* procedural prior than pure laminar, but **not a universal champion**. Preferential remains the GNG map. That matches state-trading: one procedural rule family is fine; **which family is active should be regime/state-selected** (future), not hardwired to a neuropil name.
+Sheet-hub is a better *ME-shaped* procedural prior than pure laminar, but **not a universal champion**. Preferential remains the GNG map. One procedural rule family is fine; **which family is active should be regime/state-selected** (future), not hardwired to a neuropil name.

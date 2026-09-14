@@ -113,6 +113,13 @@ def run_stress(
     bilayer: bool = False,
     talk_board: bool = False,
     nearest_exact: bool = False,
+    regime_mode: bool = False,
+    regime_gather: bool = False,
+    regime_substrate: bool = False,
+    hub_governor: bool = False,
+    edge_frac: float = 1.0,
+    state_table_k: int = 0,
+    state_table_mix: float = 0.25,
 ) -> dict[str, Any]:
     from dsc import defaults
     from dsc.substrate import generate_substrate
@@ -133,13 +140,90 @@ def run_stress(
     save_subgraph(bundle, sub_path)
 
     fly_edges = int(bundle["adj"].sum())
+    edge_frac = float(edge_frac)
+    if edge_frac <= 0 or edge_frac > 1.5:
+        raise ValueError(f"edge_frac must be in (0, 1.5], got {edge_frac}")
+    dsc_edge_target = max(n, int(round(fly_edges * edge_frac)))
+    regime_info = None
+    dsc_family_requested = dsc_family
+    sheet_genes = None
+    hub_gov_report = None
+    # F031 hub-governor implies substrate genes path (sheet_hub)
+    use_hub_gov = bool(hub_governor)
+    use_substrate = bool(regime_substrate or use_hub_gov)
+    # Peer risk: --hub-governor alone must not silently remap GNG → sheet_hub
+    if use_hub_gov:
+        req = str(dsc_family).replace("_directed", "").strip().lower()
+        optic_ok = str(neuropil).upper() in {"ME_R", "ME_L", "LO_R", "LO_L", "LOP_R", "LOP_L", "OPTIC"}
+        explicit_sheet = req in {"sheet_hub", "hybrid", "sheet_pa"}
+        if not (optic_ok or explicit_sheet):
+            raise ValueError(
+                "F031 --hub-governor refuses silent non-optic remap: "
+                f"neuropil={neuropil!r} dsc_family_requested={dsc_family!r}. "
+                "Use an optic venue (ME_*/LO_*) or pass --dsc-family sheet_hub explicitly."
+            )
+    apply_regime_sense = bool(regime_mode or regime_gather or use_substrate)
+    if apply_regime_sense:
+        from tools.regime_mode import sense_adj
+        sensed = sense_adj(bundle["adj"].astype(np.uint8), baseline_seed=seed)
+        if regime_mode:
+            dsc_family = sensed["pick"]
+        if use_substrate:
+            # genes only apply to sheet_hub family — force that family (record request)
+            dsc_family = "sheet_hub"
+            sheet_genes = sensed.get("substrate_genes")
+        # slim copy for ledger (avoid huge baseline dumps)
+        regime_info = {
+            "pick": sensed["pick"],
+            "r": sensed["r"],
+            "weights": sensed["weights"],
+            "gather_knobs": sensed.get("gather_knobs") if (regime_gather or regime_mode) else None,
+            "substrate_genes": sheet_genes,
+            "permute_ablation": {
+                k: sensed.get("permute_ablation", {}).get(k)
+                for k in (
+                    "extract_order_local_frac",
+                    "permuted_local_mean",
+                    "local_minus_permuted",
+                    "local_likely_extract_artifact",
+                    "note",
+                )
+            },
+            "local_axis": "extract_order_local_frac",
+            "dsc_family_requested": dsc_family_requested,
+            "family_overridden": bool(regime_mode or use_substrate),
+            "gather_applied": bool(regime_gather or regime_mode),
+            "substrate_applied": bool(use_substrate),
+            "hub_governor": bool(use_hub_gov),
+            "degenerate_vs_requested": (
+                str(sensed["pick"]).replace("_directed", "")
+                == str(dsc_family_requested).replace("_directed", "")
+            ),
+        }
     # DSC side: chosen family; match fly edge budget when not pure ER-p
-    dsc_sub = generate_substrate(
-        n=n,
-        seed=seed,
-        family=dsc_family,
-        target_edges=fly_edges,
-    )
+    if use_hub_gov and regime_info is not None:
+        from tools.regime_mode import generate_sheet_hub_governed
+        gov = generate_sheet_hub_governed(
+            n=n,
+            target_edges=dsc_edge_target,
+            seed=seed,
+            r=regime_info["r"],
+            genes=sheet_genes,
+        )
+        dsc_sub = gov["substrate"]
+        sheet_genes = gov.get("genes_final") or sheet_genes
+        hub_gov_report = {k: gov[k] for k in gov if k != "substrate"}
+        if regime_info is not None:
+            regime_info["substrate_genes"] = sheet_genes
+            regime_info["hub_governor_report"] = hub_gov_report
+    else:
+        dsc_sub = generate_substrate(
+            n=n,
+            seed=seed,
+            family=dsc_family,
+            target_edges=dsc_edge_target,
+            sheet_genes=sheet_genes,
+        )
     rt_er = _build_on_adj(dsc_sub.adj, dsc_sub.meta, seed=seed)
     rt_fly = _build_on_adj(bundle["adj"], bundle["meta"], seed=seed)
 
@@ -162,8 +246,13 @@ def run_stress(
         if nearest_exact:
             _override("NEAREST_EXACT", True)
 
-        for rt in (rt_er, rt_fly):
-            # rebuild harness with possibly overridden lag/noise
+        if int(state_table_k) > 0:
+            _override("STATE_TABLE_K", int(state_table_k))
+            _override("STATE_TABLE_MIX", float(state_table_mix))
+            # rebuild runtimes so dataclass picks up table
+            rt_er = _build_on_adj(dsc_sub.adj, dsc_sub.meta, seed=seed)
+            # fly exam tape: leave STATE_TABLE off unless explicitly set
+        def _warm_evolve(rt):
             from dsc.harness import TemporalHarness
             rt.harness = TemporalHarness(
                 seed=seed,
@@ -176,8 +265,41 @@ def run_stress(
             if evolve > 0:
                 rt.evolve(n=evolve, seed=seed)
 
-        dsc_m = _eval_runtime(rt_er, ticks=ticks, seed=seed + 1)
+        # Fly exam tape: CLI gather flags only (not regime knobs from r).
+        _warm_evolve(rt_fly)
         fly_m = _eval_runtime(rt_fly, ticks=ticks, seed=seed + 1)
+
+        # R005: gather knobs from r apply to DSC only (no adj blend; no neuropil if).
+        # Substrate genes already baked into dsc_sub; gather is separate opt-in.
+        if regime_info and regime_info.get("gather_applied") and regime_info.get("gather_knobs"):
+            gk = regime_info["gather_knobs"]
+            for name in ("HUB_AWARE", "HUB_OUT_EXP", "LOCAL_GATHER_MIX"):
+                if name in gk:
+                    _override(name, gk[name])
+            if not bilayer and "BILAYER" in gk:
+                _override("BILAYER", bool(gk["BILAYER"]))
+                if "BILAYER_MIX" in gk:
+                    _override("BILAYER_MIX", float(gk["BILAYER_MIX"]))
+            if not talk_board and "TALK_BOARD" in gk:
+                _override("TALK_BOARD", bool(gk["TALK_BOARD"]))
+                if "TALK_MIX" in gk:
+                    _override("TALK_MIX", float(gk["TALK_MIX"]))
+            if not nearest_exact and gk.get("NEAREST_EXACT"):
+                _override("NEAREST_EXACT", True)
+
+        # F031: gather damp only if FINAL still overshoots (Peer: don't contaminate A/B)
+        if (
+            hub_gov_report
+            and hub_gov_report.get("overshoot_final")
+            and float(hub_gov_report.get("gather_hub_out_exp_nudge") or 0) > 0
+        ):
+            nudge = float(hub_gov_report["gather_hub_out_exp_nudge"])
+            cur = float(getattr(defaults, "HUB_OUT_EXP", 0.5))
+            _override("HUB_AWARE", True)
+            _override("HUB_OUT_EXP", float(min(0.9, cur + nudge)))
+
+        _warm_evolve(rt_er)
+        dsc_m = _eval_runtime(rt_er, ticks=ticks, seed=seed + 1)
     finally:
         for k, v in _saved.items():
             setattr(defaults, k, v)
@@ -203,6 +325,40 @@ def run_stress(
         "bilayer": bool(bilayer),
         "talk_board": bool(talk_board),
         "nearest_exact": bool(nearest_exact),
+        "regime_mode": bool(regime_mode),
+        "regime_gather": bool(regime_gather or regime_mode),
+        "regime_substrate": bool(regime_substrate or hub_governor),
+        "hub_governor": bool(hub_governor),
+        "edge_frac": float(edge_frac),
+        "dsc_edge_target": int(dsc_edge_target),
+        "fly_edges": int(fly_edges),
+        "dsc_edges": int(dsc_sub.adj.sum()),
+        "state_table_k": int(state_table_k),
+        "state_table_mix": float(state_table_mix) if int(state_table_k) > 0 else None,
+        "state_table": (rt_er.state_table.report() if getattr(rt_er, "state_table", None) else None),
+        "dsc_family_requested": dsc_family_requested,
+        "family_forced_sheet_hub": bool(
+            use_substrate
+            and str(dsc_family_requested).replace("_directed", "").strip().lower()
+            not in {"sheet_hub", "hybrid", "sheet_pa"}
+        ),
+        "regime_pick": (regime_info or {}).get("pick"),
+        "gather_knobs": (regime_info or {}).get("gather_knobs"),
+        "substrate_genes": sheet_genes or (dsc_sub.meta or {}).get("sheet_genes"),
+        "hub_governor_report": hub_gov_report,
+        "regime": regime_info,
+        # True when final family matches requested (collapsed/unlabeled A/B).
+        # family_forced_sheet_hub flags forced remap when requested≠sheet_hub.
+        # Family-level A/B vacuous only when override active AND final == requested
+        # for a *non-sheet* request. If user already asked sheet_hub/hybrid/sheet_pa,
+        # same-family vs governor/genes is intentional gene-level A/B — not degenerate_ab.
+        "degenerate_ab": (
+            bool(regime_mode or use_substrate)
+            and str((dsc_sub.meta or {}).get("family", dsc_family)).replace("_directed", "").strip().lower()
+            == str(dsc_family_requested).replace("_directed", "").strip().lower()
+            and str(dsc_family_requested).replace("_directed", "").strip().lower()
+            not in {"sheet_hub", "hybrid", "sheet_pa"}
+        ),
         "nearest_k": int(__import__("dsc.defaults", fromlist=["NEAREST_K"]).NEAREST_K) if nearest_exact else None,
         "nearest_rule": str(__import__("dsc.defaults", fromlist=["NEAREST_RULE"]).NEAREST_RULE) if nearest_exact else None,
         "nearest_note": (
@@ -243,6 +399,16 @@ def _render_md(report: dict) -> str:
         f"- N={report['n']} neuropil=`{report['neuropil']}` seed={report['seed']}",
         f"- scoreboard: fly_adj wins **{report['scoreboard']['fly_adj_wins']}** · DSC wins **{report['scoreboard'].get('dsc_wins', report['scoreboard'].get('er_wins'))}**",
         f"- dsc_family: `{report.get('dsc_family')}` · experiment: `{report.get('experiment')}`",
+        f"- edge_frac: `{report.get('edge_frac')}` · dsc_edges: `{report.get('dsc_edges')}` / fly_edges: `{report.get('fly_edges')}`",
+        f"- state_table_k: `{report.get('state_table_k')}` · state_table: `{report.get('state_table')}`",
+        f"- hub_governor: `{report.get('hub_governor')}` · regime_substrate: `{report.get('regime_substrate')}` · family_forced_sheet_hub: `{report.get('family_forced_sheet_hub')}`",
+        f"- substrate_genes: `{report.get('substrate_genes')}`",
+        (
+            f"- hub_gov: overshoot_final=`{(report.get('hub_governor_report') or {}).get('overshoot_final')}` "
+            f"regenerated=`{(report.get('hub_governor_report') or {}).get('regenerated')}` "
+            f"nudge=`{(report.get('hub_governor_report') or {}).get('gather_hub_out_exp_nudge')}`"
+            if report.get("hub_governor") else "- hub_gov: off"
+        ),
         "",
         "## Side-by-side",
         "",
@@ -272,6 +438,24 @@ def _append_ledger(report: dict[str, Any], path: Path) -> None:
         "n": report.get("n"),
         "neuropil": report.get("neuropil"),
         "dsc_family": report.get("dsc_family"),
+        "dsc_family_requested": report.get("dsc_family_requested"),
+        "regime_mode": report.get("regime_mode"),
+        "regime_gather": report.get("regime_gather"),
+        "regime_substrate": report.get("regime_substrate"),
+        "hub_governor": report.get("hub_governor"),
+        "edge_frac": report.get("edge_frac"),
+        "state_table_k": report.get("state_table_k"),
+        "dsc_edges": report.get("dsc_edges"),
+        "fly_edges": report.get("fly_edges"),
+        "family_forced_sheet_hub": report.get("family_forced_sheet_hub"),
+        "regime_pick": report.get("regime_pick"),
+        "regime_r": (report.get("regime") or {}).get("r"),
+        "gather_knobs": report.get("gather_knobs"),
+        "substrate_genes": report.get("substrate_genes"),
+        "hub_gov_overshoot_final": (report.get("hub_governor_report") or {}).get("overshoot_final"),
+        "hub_gov_regenerated": (report.get("hub_governor_report") or {}).get("regenerated"),
+        "hub_gov_nudge": (report.get("hub_governor_report") or {}).get("gather_hub_out_exp_nudge"),
+        "degenerate_ab": report.get("degenerate_ab"),
         "hub_aware": report.get("hub_aware"),
         "prune_stress": report.get("prune_stress"),
         "task_lag": report.get("task_lag"),
@@ -316,6 +500,24 @@ def main(argv=None) -> int:
                     help="F030 shared talk bitset + edge-masked glance")
     ap.add_argument("--nearest-exact", action="store_true",
                     help="R003 nearest-neighbor exact signal (no mean gather)")
+    ap.add_argument("--regime-mode", action="store_true",
+                    help="R005: override --dsc-family with regime pick from fly adj "
+                         "(requested family still recorded; check degenerate_ab)")
+    ap.add_argument("--regime-gather", action="store_true",
+                    help="R005: keep --dsc-family; apply gather knobs from fly r "
+                        "(HUB_OUT_EXP, LOCAL_GATHER_MIX, optional bilayer/talk)")
+    ap.add_argument("--regime-substrate", action="store_true",
+                    help="R005: force sheet_hub; set σ/α/β/p_recip genes from fly r "
+                        "(no gather unless also --regime-gather)")
+    ap.add_argument("--edge-frac", type=float, default=1.0,
+                    help="DSC edge budget as fraction of matched fly edges (wire footprint)")
+    ap.add_argument("--state-table-k", type=int, default=0,
+                    help="F032: discrete state table size (0=off); DSC only")
+    ap.add_argument("--state-table-mix", type=float, default=0.25,
+                    help="F032: blend weight of table prior into y_hat")
+    ap.add_argument("--hub-governor", action="store_true",
+                    help="F031: hub formation governor (on-ramp+ceiling+one regenerate); "
+                        "implies sheet_hub genes from r")
     args = ap.parse_args(argv)
     report = run_stress(
         n=args.n,
@@ -333,6 +535,10 @@ def main(argv=None) -> int:
         bilayer=bool(args.bilayer),
         talk_board=bool(args.talk_board),
         nearest_exact=bool(args.nearest_exact),
+        regime_mode=bool(args.regime_mode),
+        regime_gather=bool(getattr(args, "regime_gather", False)),
+        regime_substrate=bool(getattr(args, "regime_substrate", False)),
+        hub_governor=bool(getattr(args, "hub_governor", False)),
     )
     _append_ledger(report, Path(args.out) / "stress_ledger.jsonl")
     print(json.dumps({
@@ -343,6 +549,23 @@ def main(argv=None) -> int:
         "bilayer": report.get("bilayer"),
         "talk_board": report.get("talk_board"),
         "nearest_exact": report.get("nearest_exact"),
+        "regime_mode": report.get("regime_mode"),
+        "regime_gather": report.get("regime_gather"),
+        "regime_substrate": report.get("regime_substrate"),
+        "hub_governor": report.get("hub_governor"),
+        "edge_frac": report.get("edge_frac"),
+        "state_table_k": report.get("state_table_k"),
+        "dsc_edges": report.get("dsc_edges"),
+        "fly_edges": report.get("fly_edges"),
+        "family_forced_sheet_hub": report.get("family_forced_sheet_hub"),
+        "dsc_family_requested": report.get("dsc_family_requested"),
+        "regime_pick": report.get("regime_pick"),
+        "regime_r": (report.get("regime") or {}).get("r") if report.get("regime") else None,
+        "gather_knobs": report.get("gather_knobs"),
+        "substrate_genes": report.get("substrate_genes"),
+        "hub_governor_overshoot": (report.get("hub_governor_report") or {}).get("overshoot_final"),
+        "hub_governor_regenerated": (report.get("hub_governor_report") or {}).get("regenerated"),
+        "degenerate_ab": report.get("degenerate_ab"),
         "nearest_rule": report.get("nearest_rule"),
         "nearest_note": report.get("nearest_note"),
         "scoreboard": report["scoreboard"],

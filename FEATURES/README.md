@@ -47,3 +47,7 @@ Live FlyWire BRAIN MAP activity field — soma-projected energy with decay/bleed
 - F028 — Procedural sheet+hub substrate (anti-overfit)
 - F029 — Bilayer elevated state (folded sheet)
 - F030 — Talk board (shared presence + edge-masked glance)
+- F031 — Hub formation governor (**soft_assay**, not promoted; Peer re-review)
+
+## F032
+Make discrete states from experience + consolidate duplicate transition rows (footprint). Assay: B018 / R006. See `FEATURES/F032_state_make_and_consolidate.md`.

@@ -106,10 +106,22 @@ TALK_THRESH = 0.02          # activity above this ⇒ bit on (prev tick)
 TALK_MIX = 0.30             # weight of edge-masked talking-neighbor hidden
 TALK_GLOBAL = 0.05          # light global talk_frac into inject (building volume)
 
+# Soft local gather blend (R005) — continuous knob from regime r
+# Layman: how much to prefer the closest wired seat vs the degree-mean soup.
+# Tech: messages = (1-m)*mean_hub_gather + m*sheet_nearest; default 0 (off).
+# No neuropil hardcodes; set from tools.regime_mode.gather_knobs_from_r.
+LOCAL_GATHER_MIX = 0.0       # [0,1] blend toward |i-j| nearest in-neighbor
+
 # Nearest-neighbor exact signal (R003) — opt-in A/B
 # Layman: read the exact tape from your closest wired seat, not a soup of everyone.
 # Tech: replace degree-mean gather with hidden[nn[i]] (1 in-neighbor). Default off.
 NEAREST_EXACT = False
 NEAREST_K = 1                 # 1 = exact single peer; >1 = mean of k nearest exact peers
 NEAREST_RULE = "sheet"        # sheet=|i-j| among in-neighbors; inweight=max A[s,d]
+
+# F032 — discrete state table (opt-in; 0 = off)
+STATE_TABLE_K = 0
+STATE_TABLE_MIX = 0.25          # blend weight of table prior into y_hat
+STATE_TABLE_CONSOLIDATE = True
+STATE_TABLE_L1_MERGE = 0.25
 

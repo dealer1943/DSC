@@ -11,9 +11,9 @@ Today every state cell carries its **own** local book (hidden, gates, type kerne
 
 This is research, not a feature commitment. Promote to F0xx only after a cheap A/B on Profile D (sheet / ME_R first).
 
-## Layman (trading desk)
+## Layman
 
-Picture a trading floor as a **3×3 desk grid**.
+Picture a **3×3 neighborhood grid** of seats.
 
 **Current DSC habit (stack-per-seat):**  
 Every desk keeps its own full blotter *and* averages shouts from everyone wired to it. If the building also has a “who’s talking” board (F030) or a “one floor up” glance (F029), that is *extra* channels — but the core tick still **mixes** neighbor hiddens into a new local vector. Each seat ends up with a **processed copy** of the room, not a live peek at the person next to them.
