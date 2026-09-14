@@ -108,7 +108,47 @@ def step_population(
     hub = bool(getattr(defaults, "HUB_AWARE", False))
     in_deg = np.clip(A.sum(axis=0), 1.0, None)
     out_deg = np.clip(A.sum(axis=1), 1.0, None)
-    if use_sparse:
+    nearest_exact = bool(getattr(defaults, "NEAREST_EXACT", False))
+    if nearest_exact:
+        # R003: exact nearest in-neighbor hidden (no degree-mean soup).
+        src, dst = sub.edge_index()
+        k = max(1, int(getattr(defaults, "NEAREST_K", 1)))
+        rule = str(getattr(defaults, "NEAREST_RULE", "sheet"))
+        messages = np.zeros_like(h)
+        if len(src) == 0:
+            messages = h.copy()
+        elif k == 1:
+            best = np.full(n, -1, dtype=np.int32)
+            best_score = np.full(n, np.inf, dtype=np.float64)
+            for s, d in zip(src.tolist(), dst.tolist()):
+                if rule == "inweight":
+                    score = -float(A[s, d])
+                else:
+                    score = float(abs(int(s) - int(d)))
+                if score < best_score[d]:
+                    best_score[d] = score
+                    best[d] = int(s)
+            has = best >= 0
+            messages[has] = h[best[has]]
+            messages[~has] = h[~has]
+        else:
+            # mean of up to k nearest exact peers (still local, not full degree)
+            buckets = {i: [] for i in range(n)}
+            for s, d in zip(src.tolist(), dst.tolist()):
+                if rule == "inweight":
+                    score = -float(A[s, d])
+                else:
+                    score = float(abs(int(s) - int(d)))
+                buckets[int(d)].append((score, int(s)))
+            for i in range(n):
+                peers = buckets[i]
+                if not peers:
+                    messages[i] = h[i]
+                    continue
+                peers.sort(key=lambda t: t[0])
+                pick = [s for _, s in peers[:k]]
+                messages[i] = h[pick].mean(axis=0)
+    elif use_sparse:
         src, dst = sub.edge_index()  # A[src,dst]=1 ⇒ src→dst; einsum used A[j,i]=src→dst
         # align with einsum "ji": j=src, i=dst
         messages = np.zeros_like(h)

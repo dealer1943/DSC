@@ -1,7 +1,7 @@
 ---
 id: F025
 title: Harder temporal harness (stress mode)
-status: in_progress
+status: implemented
 phase: DSC core
 pairs_with: [F010, F021]
 updated: 2026-09-14
@@ -15,3 +15,5 @@ Widen the task gap on Profile D by raising lag/noise so structure and messaging 
 
 ## Default (2026-09-14)
 Profile D stress defaults to lag=2 / noise=0.20; pass `--easy-harness` for lag-1 baseline.
+## Shipped
+Profile D defaults lag=2 / noise=0.20; `--easy-harness` for lag-1 baseline.

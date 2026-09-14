@@ -1,10 +1,10 @@
 ---
 id: F012
 title: Connectome operator console (universal ASCII / TUI)
-status: stub
+status: implemented
 phase: interface
 priority: P1
-updated: 2026-09-13
+updated: 2026-09-14
 pairs_with: [B001, B005, B009, B010, B015]
 related: [F001, F002, F005, F006, F009, F011, R001]
 audience: operator + public demo (e.g. Twitter clips)
@@ -97,6 +97,9 @@ Palette behavior: typing `/` opens the list; further characters fuzzy-filter; Ta
 - Default FlyWire view is a **sampled / focused** subgraph with clear “showing k of N” caption — never pretend the whole brain is on screen.  
 - DSC default view emphasizes **type mix + signal strips** (the story), not every edge.
 
+
+## Shipped
+Operator console is live (`UI/console`): Textual TUI, adapters for DSC / FlyWire / OpenWorm, slash palette, live sample, stim/rest, progress bar, BRAIN MAP. Status was stale `stub`.
 ## Non-goals (this feature)
 - Full GUI IDE / web dashboard (ASCII/TUI first; rich GUI later if needed)  
 - Editing FlyWire ground truth  

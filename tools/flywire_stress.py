@@ -112,6 +112,7 @@ def run_stress(
     task_noise: float | None = None,
     bilayer: bool = False,
     talk_board: bool = False,
+    nearest_exact: bool = False,
 ) -> dict[str, Any]:
     from dsc import defaults
     from dsc.substrate import generate_substrate
@@ -158,6 +159,8 @@ def run_stress(
             _override("BILAYER", True)
         if talk_board:
             _override("TALK_BOARD", True)
+        if nearest_exact:
+            _override("NEAREST_EXACT", True)
 
         for rt in (rt_er, rt_fly):
             # rebuild harness with possibly overridden lag/noise
@@ -199,6 +202,14 @@ def run_stress(
         "hub_aware": bool(__import__("dsc.defaults", fromlist=["HUB_AWARE"]).HUB_AWARE),
         "bilayer": bool(bilayer),
         "talk_board": bool(talk_board),
+        "nearest_exact": bool(nearest_exact),
+        "nearest_k": int(__import__("dsc.defaults", fromlist=["NEAREST_K"]).NEAREST_K) if nearest_exact else None,
+        "nearest_rule": str(__import__("dsc.defaults", fromlist=["NEAREST_RULE"]).NEAREST_RULE) if nearest_exact else None,
+        "nearest_note": (
+            "replaces mean/hub gather; sheet rule is |i-j| index proxy (not anatomical nn); "
+            "BILAYER/TALK still apply if those flags are on — leave them off for a pure nearest A/B"
+            if nearest_exact else None
+        ),
         "prune_stress": bool(prune_stress),
         "task_lag": int(task_lag) if task_lag is not None else 1,
         "task_noise": float(task_noise) if task_noise is not None else 0.05,
@@ -303,6 +314,8 @@ def main(argv=None) -> int:
                     help="F029 folded-sheet elevated state channel")
     ap.add_argument("--talk-board", action="store_true",
                     help="F030 shared talk bitset + edge-masked glance")
+    ap.add_argument("--nearest-exact", action="store_true",
+                    help="R003 nearest-neighbor exact signal (no mean gather)")
     args = ap.parse_args(argv)
     report = run_stress(
         n=args.n,
@@ -319,6 +332,7 @@ def main(argv=None) -> int:
         task_noise=(0.05 if args.easy_harness else (args.task_noise if args.task_noise is not None else 0.20)),
         bilayer=bool(args.bilayer),
         talk_board=bool(args.talk_board),
+        nearest_exact=bool(args.nearest_exact),
     )
     _append_ledger(report, Path(args.out) / "stress_ledger.jsonl")
     print(json.dumps({
@@ -328,6 +342,9 @@ def main(argv=None) -> int:
         "hub_aware": report.get("hub_aware"),
         "bilayer": report.get("bilayer"),
         "talk_board": report.get("talk_board"),
+        "nearest_exact": report.get("nearest_exact"),
+        "nearest_rule": report.get("nearest_rule"),
+        "nearest_note": report.get("nearest_note"),
         "scoreboard": report["scoreboard"],
         "dsc_task_error": (report.get("dsc") or report["er"])["task_error"],
         "fly_task_error": report["fly_adj"]["task_error"],

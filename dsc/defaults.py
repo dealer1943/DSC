@@ -106,3 +106,10 @@ TALK_THRESH = 0.02          # activity above this ⇒ bit on (prev tick)
 TALK_MIX = 0.30             # weight of edge-masked talking-neighbor hidden
 TALK_GLOBAL = 0.05          # light global talk_frac into inject (building volume)
 
+# Nearest-neighbor exact signal (R003) — opt-in A/B
+# Layman: read the exact tape from your closest wired seat, not a soup of everyone.
+# Tech: replace degree-mean gather with hidden[nn[i]] (1 in-neighbor). Default off.
+NEAREST_EXACT = False
+NEAREST_K = 1                 # 1 = exact single peer; >1 = mean of k nearest exact peers
+NEAREST_RULE = "sheet"        # sheet=|i-j| among in-neighbors; inweight=max A[s,d]
+

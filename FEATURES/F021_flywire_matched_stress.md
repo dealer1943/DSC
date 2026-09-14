@@ -1,7 +1,7 @@
 ---
 id: F021
 title: FlyWire matched-topology stress test (Profile D path)
-status: in_progress
+status: implemented
 phase: comparison
 pairs_with: [F011, F020, B016, R002]
 updated: 2026-09-14
@@ -46,6 +46,9 @@ Gaps (fly better OR DSC failing absolute gates on fly wiring) become the develop
 PYTHONPATH=. python -m tools.flywire_stress --n 128 --neuropil GNG --seed 42 --ticks 256
 ```
 
+
+## Shipped
+`tools/flywire_stress.py` Profile D runner + subgraph extractor + ledger; used for F022–F030 A/Bs and standings sweeps.
 ## Non-goals
 - Claiming biological equivalence
 - Training on full 16M-edge FlyWire as DSC substrate

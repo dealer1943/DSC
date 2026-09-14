@@ -6,6 +6,7 @@ from typing import List, Tuple
 # (verb, help, dsc?, flywire?)
 COMMANDS: List[Tuple[str, str, bool, bool]] = [
     ("help", "list commands", True, True),
+    ("tutorial", "guided first-run (F016): /tutorial · next · abort", True, True),
     ("load", "load: /load dsc|flywire|openworm [path]", True, True),
     ("status", "mode, sizes, focus", True, True),
     ("focus", "narrow canvas: neuropil / id / all", False, True),

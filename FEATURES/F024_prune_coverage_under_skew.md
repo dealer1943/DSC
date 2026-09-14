@@ -1,7 +1,7 @@
 ---
 id: F024
 title: Prune + coverage under degree skew
-status: in_progress
+status: implemented
 phase: DSC core
 pairs_with: [F007, F008, F021, F022, F023]
 updated: 2026-09-14
@@ -15,3 +15,5 @@ Stress F007/F008 on preferential (+ hub-aware) vs FlyWire-adj at N=512 with aggr
 
 ## Fix (2026-09-14)
 Hub-aware absorb: neighbor bonus, hub penalty, wider absorb set on sparse graphs. Substrate threaded into `run_cycle`.
+## Shipped
+`--prune-stress` overrides + hub-aware absorb; exercised on preferential Profile D.

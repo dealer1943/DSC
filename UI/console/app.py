@@ -20,6 +20,7 @@ from adapters.base import ViewModel
 from console.color import legend_text, markup_fg, refresh_legend, set_signal_anchors
 from console.themes import anchors_from_theme, dsc_themes
 from console.render import canvas_panel, signal_panel, summary_panel
+from console import tutorial as op_tutorial
 from console.biology import biology_panel, should_show_biology
 from console.slash import (
     DEFAULT_SAMPLE_HZ,
@@ -179,6 +180,7 @@ class OperatorConsole(App):
         self._phase = 0.0
         self._sample_timer: Optional[Timer] = None
         self._sampling_paused: bool = False
+        self._tutorial_i: int = -1  # F016; -1 = inactive
         self._bio_phase_skip: int = 0
         self._last_vm: Optional[ViewModel] = None
 
@@ -411,6 +413,7 @@ class OperatorConsole(App):
             return
         self.sample_hz = hz
         self._arm_sampler()
+        self._tutorial_on_verb("sample", args)
         self._term(markup_fg(f"sample rate → {hz:g} Hz", min(1.0, hz / 16.0)))
         if self._last_vm is not None:
             self._paint(self._last_vm, phase=self._phase, quiet=True)
@@ -441,6 +444,8 @@ class OperatorConsole(App):
         self._phase = 0.0
         self._last_vm = self.adapter.snapshot()
         self._paint(self._last_vm, phase=self._phase)
+        # F016: only if a step still expects flywire load (optional beat is manual now)
+        self._tutorial_on_verb("load", ["flywire"])
 
     def _fail_bg_load(self, message: str) -> None:
         self._sampling_paused = False
@@ -466,11 +471,62 @@ class OperatorConsole(App):
         except Exception:
             pass
 
+
+    def _tutorial_cmd(self, args: List[str]) -> None:
+        """F016 guided tutorial."""
+        sub = (args[0].lower() if args else "start")
+        if sub in ("abort", "quit", "exit", "off"):
+            self._tutorial_i = -1
+            self._term("tutorial aborted")
+            return
+        if sub in ("start", "begin", "restart", ""):
+            self._tutorial_i = 0
+            for line in op_tutorial.render_step(0):
+                self._term(line)
+            return
+        if self._tutorial_i < 0:
+            self._tutorial_i = 0
+            for line in op_tutorial.render_step(0):
+                self._term(line)
+            return
+        if sub in ("next", "skip", "continue"):
+            self._tutorial_advance()
+            return
+        # bare /tutorial while active → reprint
+        for line in op_tutorial.render_step(self._tutorial_i):
+            self._term(line)
+
+    def _tutorial_advance(self) -> None:
+        if self._tutorial_i < 0:
+            return
+        nxt = self._tutorial_i + 1
+        if nxt >= op_tutorial.step_count():
+            self._tutorial_i = -1
+            self._term("tutorial complete — /help anytime")
+            return
+        self._tutorial_i = nxt
+        for line in op_tutorial.render_step(nxt):
+            self._term(line)
+        if op_tutorial.STEPS[nxt].id == "done":
+            self._tutorial_i = -1
+
+    def _tutorial_on_verb(self, verb: str, args: List[str]) -> None:
+        """Advance only when caller confirms the verb succeeded."""
+        if self._tutorial_i < 0:
+            return
+        if op_tutorial.matches(self._tutorial_i, verb, args):
+            self._term(f"tutorial: saw /{verb} — next beat")
+            self._tutorial_advance()
+
     def _dispatch(self, verb: str, args: List[str]) -> None:
         if verb == "help":
             for line in palette_lines("/", self.mode):
                 self._term(line)
             self._term(f"color: {legend_text()}")
+            self._term("tip: /tutorial for the guided first-run (F016)")
+            return
+        if verb == "tutorial":
+            self._tutorial_cmd(args)
             return
         if verb == "quit":
             self.exit()
@@ -528,6 +584,8 @@ class OperatorConsole(App):
             self._phase = 0.0
             self._last_vm = self.adapter.snapshot()
             self._paint(self._last_vm, phase=self._phase)
+            # F016: advance only after a successful load (not on usage/exception)
+            self._tutorial_on_verb("load", [kind] if kind else [])
             return
 
         if self.adapter is None:
@@ -539,6 +597,9 @@ class OperatorConsole(App):
             self._term(line)
         self._last_vm = self.adapter.snapshot()
         self._paint(self._last_vm, phase=self._phase)
+        # F016: advance on successful adapter verbs (refusals still print — see filter)
+        if lines and not any(str(x).startswith("refuse:") for x in lines):
+            self._tutorial_on_verb(verb, args)
 
     @on(Input.Changed, "#cmd")
     def on_input_changed(self, event: Input.Changed) -> None:

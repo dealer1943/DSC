@@ -1,7 +1,7 @@
 ---
 id: F022
 title: Structured substrate families (beyond ER)
-status: in_progress
+status: implemented
 phase: DSC core
 pairs_with: [F001, F021, B016]
 updated: 2026-09-14
@@ -19,3 +19,5 @@ Give DSC wiring inductive bias beyond Erdős–Rényi so Profile D stress (FlyWi
 
 ## Eval protocol
 One family change at a time → `tools.flywire_stress --n 512 --dsc-family <id>` → append `BENCHMARKS/runs/stress_ledger.jsonl`.
+## Shipped
+Families in `dsc/substrate.py`: ER, preferential, modular, laminar, sheet_hub; selected via `--dsc-family`.
