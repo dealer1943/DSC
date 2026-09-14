@@ -9,7 +9,7 @@ import numpy as np
 from dsc import defaults
 from dsc.progress import ProgressCb, emit
 
-FAMILIES = ("erdos_renyi_directed", "preferential_directed", "modular_directed")
+FAMILIES = ("erdos_renyi_directed", "preferential_directed", "modular_directed", "laminar_directed")
 
 
 @dataclass
@@ -126,6 +126,87 @@ def _modular(n: int, target_edges: int, rng: np.random.Generator, n_blocks: int 
     return _cap_density(adj, rng)
 
 
+def _laminar(n: int, target_edges: int, rng: np.random.Generator, n_layers: int | None = None) -> np.ndarray:
+    """Stacked sheets: dense local in-layer edges, sparser adjacent-layer bridges.
+
+    Layman: floors in a building — lots of walking on your floor, fewer stairs.
+    Tech: cells partitioned into L layers; local digraph within layer;
+    light interlayer coupling. Fills to target_edges with widening locality.
+    """
+    adj = np.zeros((n, n), dtype=np.uint8)
+    if n_layers is None:
+        n_layers = int(np.clip(round(np.sqrt(n) / 2), 4, 16))
+    layers = np.array_split(np.arange(n), n_layers)
+    within_budget = int(0.75 * target_edges)
+    between_budget = max(1, target_edges - within_budget)
+
+    def _add_edge(a: int, b: int) -> bool:
+        if a == b or adj[a, b]:
+            return False
+        adj[a, b] = 1
+        return True
+
+    placed = 0
+    # pass 1: tight local
+    # pass 2: wider local
+    # pass 3: any within-layer
+    for radius_frac in (1 / 8, 1 / 3, 1.0):
+        guard = 0
+        while placed < within_budget and guard < within_budget * 100:
+            guard += 1
+            li = int(rng.integers(0, n_layers))
+            idxs = layers[li]
+            if len(idxs) < 2:
+                continue
+            a_pos = int(rng.integers(0, len(idxs)))
+            a = int(idxs[a_pos])
+            rad = max(1, int(len(idxs) * radius_frac))
+            lo = max(0, a_pos - rad)
+            hi = min(len(idxs), a_pos + rad + 1)
+            neighborhood = idxs[lo:hi]
+            b = int(rng.choice(neighborhood))
+            if _add_edge(a, b):
+                placed += 1
+
+    placed_b = 0
+    guard = 0
+    while placed_b < between_budget and guard < between_budget * 120:
+        guard += 1
+        li = int(rng.integers(0, max(1, n_layers - 1)))
+        a_layer = layers[li]
+        b_layer = layers[min(li + 1, n_layers - 1)]
+        if len(a_layer) == 0 or len(b_layer) == 0:
+            continue
+        pa = int(rng.integers(0, len(a_layer)))
+        pb = int(np.clip(
+            int(pa * len(b_layer) / max(1, len(a_layer))) + int(rng.integers(-3, 4)),
+            0,
+            len(b_layer) - 1,
+        ))
+        a, b = int(a_layer[pa]), int(b_layer[pb])
+        src, dst = (a, b) if rng.random() < 0.8 else (b, a)
+        if _add_edge(src, dst):
+            placed_b += 1
+
+    # final fill: any missing edges preferentially within-layer then anywhere
+    guard = 0
+    while int(adj.sum()) < target_edges and guard < target_edges * 50:
+        guard += 1
+        if rng.random() < 0.7:
+            li = int(rng.integers(0, n_layers))
+            idxs = layers[li]
+            if len(idxs) < 2:
+                continue
+            a, b = (int(x) for x in rng.choice(idxs, size=2, replace=False))
+        else:
+            a = int(rng.integers(0, n))
+            b = int(rng.integers(0, n))
+        _add_edge(a, b)
+
+    return _cap_density(adj, rng)
+
+
+
 def generate_substrate(
     n: int = defaults.N_NODES,
     p: float = defaults.EDGE_PROB,
@@ -136,10 +217,11 @@ def generate_substrate(
 ) -> Substrate:
     """Build a sparse directed substrate.
 
-    Families (F022):
+    Families (F022 / F027):
       - erdos_renyi_directed (default MVP)
       - preferential_directed (heavy-tailed hubs)
       - modular_directed (block / neuropil-ish modules)
+      - laminar_directed (stacked sheets — optic/ME-LO prior)
     """
     emit(progress, 0.05, "substrate: seeding RNG")
     rng = np.random.default_rng(seed)
@@ -153,9 +235,17 @@ def generate_substrate(
         "modular": "modular_directed",
         "sbm": "modular_directed",
         "block": "modular_directed",
+        "laminar": "laminar_directed",
+        "optic": "laminar_directed",
+        "sheets": "laminar_directed",
     }
     fam = aliases.get(fam, fam)
-    if fam not in ("erdos_renyi_directed", "preferential_directed", "modular_directed"):
+    if fam not in (
+        "erdos_renyi_directed",
+        "preferential_directed",
+        "modular_directed",
+        "laminar_directed",
+    ):
         raise ValueError(f"unknown substrate family: {family}")
 
     # default sparse target ~ fly-like 5% when not ER-p driven
@@ -167,8 +257,10 @@ def generate_substrate(
         adj = _er(n, p, rng)
     elif fam == "preferential_directed":
         adj = _preferential(n, int(target_edges), rng)
-    else:
+    elif fam == "modular_directed":
         adj = _modular(n, int(target_edges), rng)
+    else:
+        adj = _laminar(n, int(target_edges), rng)
 
     emit(progress, 0.7, "substrate: enforcing invariants")
     dens = float(adj.sum() / max(1, n * (n - 1)))
@@ -182,6 +274,8 @@ def generate_substrate(
         "density": dens,
         "n_edges": int(adj.sum()),
     }
+    if fam == "laminar_directed":
+        meta["n_layers"] = int(np.clip(round(np.sqrt(n) / 2), 4, 16))
     emit(progress, 1.0, f"substrate: done · edges={meta['n_edges']} density={dens:.4f}")
     return Substrate(adj=adj, meta=meta)
 
