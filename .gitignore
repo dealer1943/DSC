@@ -79,5 +79,11 @@ UI/exports/
 # Bench / assay artifacts (regenerate with tools/)
 BENCHMARKS/runs/**
 !BENCHMARKS/runs/.gitkeep
+!BENCHMARKS/runs/stressD_*.json
+!BENCHMARKS/runs/stressD_*.md
 BENCHMARKS/meta/*.jsonl
 !BENCHMARKS/meta/.gitkeep
+
+# Large extracted subgraphs (optional fixtures)
+MODELS/fly/subgraphs/*.npz
+!MODELS/fly/subgraphs/README.md

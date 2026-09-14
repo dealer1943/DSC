@@ -1,5 +1,15 @@
 # DSC Handoff (read first)
 
+## Stress path 2026-09-14 — F021 Profile D
+
+- Feature: `FEATURES/F021_flywire_matched_stress.md`
+- Tools: `python -m tools.flywire_subgraph`, `python -m tools.flywire_stress`
+- First run: `BENCHMARKS/runs/stressD_20260914T005930Z_n128_GNG.md` — fly_adj 3 / ER 2 at N=128 GNG (margins thin; task nearly tied)
+- Dev targets when fly wins: non-ER motifs (F001), F007/F008 under degree skew, F005/type emergence on hubs
+- Next stress knobs: N=512, denser/skewed neuropil (e.g. ME_*), longer evolve, harder harness
+
+---
+
 ## Adversarial resolution 2026-09-14 (benches)
 
 Review: `RESEARCH/ADVERSARIAL_REVIEW_2026-09-14_benches.md`

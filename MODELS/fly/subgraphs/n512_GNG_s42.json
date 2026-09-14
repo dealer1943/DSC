@@ -1,0 +1,10 @@
+{
+  "family": "flywire_subgraph",
+  "n": 512,
+  "n_edges": 13129,
+  "density": 0.05018117049902153,
+  "neuropil": "GNG",
+  "seed": 42,
+  "source": "proofread_connections_783",
+  "utc": "2026-09-14T01:07:03Z"
+}

@@ -78,8 +78,8 @@ Run DSC harness for `T` ticks (default T=256, seed fixed). Record task_error, ut
 Load FlyWire edges (default: proofread connections only). No tick dynamics. `task_utility_proxy = 0` unless a **declared adapter** maps a subgraph into the DSC harness (Profile D).  
 **Use:** shows FlyWire’s E_* collapse on dynamics scores — anatomy is not free compute.
 
-### Profile D — `matched_subgraph_swap` (future, optional but specified)
-Extract a FlyWire subgraph with `n_nodes ≈ N_dsc` (or fixed N ∈ {128,512,2048}), degree-matched or neuropil-focused, wire it as DSC substrate **without** changing harness hyperparameters. Run Profile B on (i) synthetic ER DSC and (ii) FlyWire-derived substrate.  
+### Profile D — `matched_subgraph_swap` (F021 — in progress)
+**Tool:** `python -m tools.flywire_stress`. Extract a FlyWire subgraph with `n_nodes ≈ N_dsc` (or fixed N ∈ {128,512,2048}), degree-matched or neuropil-focused, wire it as DSC substrate **without** changing harness hyperparameters. Run Profile B on (i) synthetic ER DSC and (ii) FlyWire-derived substrate.  
 **Use:** the fairest “efficiency vs FlyWire wiring” test — same software, different hardware topology.
 
 ### Profile E — `operator_load` (UI / F012 / F013)
@@ -191,3 +191,6 @@ Bump `schema` when formulas change; keep old reports readable.
 - `pass: true` **only** when both sides have a task utility proxy (Profile D / tasked FlyWire) and ≥2 `E_*` wins with `proxy ≥ proxy_min`.
 - Profiles A,B,C,E alone → `pass: false`, `pass_kind: static_null_demo`, `claim_level: static_null_asymmetry`. Exit 0 means the **demo completed**, not that DSC beat FlyWire wiring.
 - Null-opponent `E_*` winners are `na_static_null` and do **not** increment `dsc_E_wins`.
+
+
+See FEATURES/F021_flywire_matched_stress.md for the stress-test development loop.

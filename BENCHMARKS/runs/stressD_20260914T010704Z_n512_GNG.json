@@ -1,0 +1,88 @@
+{
+  "bench": "B016_profile_D",
+  "protocol": "stress_d_v0",
+  "utc": "2026-09-14T01:07:04Z",
+  "run_id": "stressD_20260914T010704Z_n512_GNG",
+  "n": 512,
+  "neuropil": "GNG",
+  "seed": 42,
+  "warm": 32,
+  "evolve": 2,
+  "ticks": 256,
+  "subgraph": "n512_GNG_s42.npz",
+  "er": {
+    "task_error": 0.0063857375540593946,
+    "tick_wall_us": 1576.1249999999281,
+    "n_nodes": 512,
+    "n_edges": 20786,
+    "density": 0.07944746819960861,
+    "utility_mean": 0.12153913836670155,
+    "stem_frac": 0.0,
+    "task_utility_proxy": 0.9936547813469818,
+    "E_edge": 4.780404028418079e-05,
+    "E_tick": 0.0006304416092296151,
+    "ticks": 256,
+    "seed": 43
+  },
+  "fly_adj": {
+    "task_error": 0.006381155568224717,
+    "tick_wall_us": 1542.4580000000797,
+    "n_nodes": 512,
+    "n_edges": 13129,
+    "density": 0.05018117049902153,
+    "utility_mean": 0.15489955934154712,
+    "stem_frac": 0.0,
+    "task_utility_proxy": 0.9936593053904892,
+    "E_edge": 7.56843099543369e-05,
+    "E_tick": 0.0006442050969235065,
+    "ticks": 256,
+    "seed": 43
+  },
+  "gaps": [
+    {
+      "metric": "task_error",
+      "er": 0.0063857375540593946,
+      "fly_adj": 0.006381155568224717,
+      "winner": "fly_adj",
+      "dev_hint": "Grow beyond ER: motifs / neuropil-like inductive bias (F001 family)"
+    },
+    {
+      "metric": "E_tick",
+      "er": 0.0006304416092296151,
+      "fly_adj": 0.0006442050969235065,
+      "winner": "fly_adj",
+      "dev_hint": "Optimize message passing / hub handling on biological degree skew"
+    },
+    {
+      "metric": "E_edge",
+      "er": 4.780404028418079e-05,
+      "fly_adj": 7.56843099543369e-05,
+      "winner": "fly_adj",
+      "dev_hint": "Need more signal per edge: prune+coverage (F007/F008) under fly skew"
+    },
+    {
+      "metric": "utility_mean",
+      "er": 0.12153913836670155,
+      "fly_adj": 0.15489955934154712,
+      "winner": "fly_adj",
+      "dev_hint": "Retune F005 terms / type emergence for hub-heavy graphs"
+    },
+    {
+      "metric": "tick_wall_us",
+      "er": 1576.1249999999281,
+      "fly_adj": 1542.4580000000797,
+      "winner": "fly_adj",
+      "dev_hint": "Sparse kernels; avoid dense gather on fly hubs"
+    }
+  ],
+  "scoreboard": {
+    "fly_adj_wins": 5,
+    "er_wins": 0
+  },
+  "pass_matched": false,
+  "notes": [
+    "Same DSC software + harness; only adjacency family differs.",
+    "Not biological equivalence \u2014 inductive-bias stress test.",
+    "Development backlog = rows where winner=fly_adj."
+  ]
+}

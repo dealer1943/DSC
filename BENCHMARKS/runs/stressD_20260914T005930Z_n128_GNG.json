@@ -1,0 +1,88 @@
+{
+  "bench": "B016_profile_D",
+  "protocol": "stress_d_v0",
+  "utc": "2026-09-14T00:59:30Z",
+  "run_id": "stressD_20260914T005930Z_n128_GNG",
+  "n": 128,
+  "neuropil": "GNG",
+  "seed": 42,
+  "warm": 32,
+  "evolve": 2,
+  "ticks": 256,
+  "subgraph": "n128_GNG_s42.npz",
+  "er": {
+    "task_error": 0.006351969037629589,
+    "tick_wall_us": 313.54149999995866,
+    "n_nodes": 128,
+    "n_edges": 1276,
+    "density": 0.07849409448818898,
+    "utility_mean": 0.11822216542084453,
+    "stem_frac": 0.0,
+    "task_utility_proxy": 0.9936881238045333,
+    "E_edge": 0.000778752448122675,
+    "E_tick": 0.0031692395545873967,
+    "ticks": 256,
+    "seed": 43
+  },
+  "fly_adj": {
+    "task_error": 0.006349894295555733,
+    "tick_wall_us": 318.0830000000245,
+    "n_nodes": 128,
+    "n_edges": 1270,
+    "density": 0.078125,
+    "utility_mean": 0.11880896758769668,
+    "stem_frac": 0.0,
+    "task_utility_proxy": 0.9936901724424578,
+    "E_edge": 0.0007824332066476045,
+    "E_tick": 0.0031239964802972217,
+    "ticks": 256,
+    "seed": 43
+  },
+  "gaps": [
+    {
+      "metric": "task_error",
+      "er": 0.006351969037629589,
+      "fly_adj": 0.006349894295555733,
+      "winner": "fly_adj",
+      "dev_hint": "Grow beyond ER: motifs / neuropil-like inductive bias (F001 family)"
+    },
+    {
+      "metric": "E_tick",
+      "er": 0.0031692395545873967,
+      "fly_adj": 0.0031239964802972217,
+      "winner": "er",
+      "dev_hint": "Synthetic wiring is cheaper/tick \u2014 keep while raising task"
+    },
+    {
+      "metric": "E_edge",
+      "er": 0.000778752448122675,
+      "fly_adj": 0.0007824332066476045,
+      "winner": "fly_adj",
+      "dev_hint": "Need more signal per edge: prune+coverage (F007/F008) under fly skew"
+    },
+    {
+      "metric": "utility_mean",
+      "er": 0.11822216542084453,
+      "fly_adj": 0.11880896758769668,
+      "winner": "fly_adj",
+      "dev_hint": "Retune F005 terms / type emergence for hub-heavy graphs"
+    },
+    {
+      "metric": "tick_wall_us",
+      "er": 313.54149999995866,
+      "fly_adj": 318.0830000000245,
+      "winner": "er",
+      "dev_hint": "ER already fast"
+    }
+  ],
+  "scoreboard": {
+    "fly_adj_wins": 3,
+    "er_wins": 2
+  },
+  "pass_matched": false,
+  "notes": [
+    "Same DSC software + harness; only adjacency family differs.",
+    "Not biological equivalence \u2014 inductive-bias stress test.",
+    "Development backlog = rows where winner=fly_adj."
+  ]
+}
