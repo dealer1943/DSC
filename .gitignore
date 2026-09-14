@@ -83,6 +83,13 @@ BENCHMARKS/runs/**
 !BENCHMARKS/runs/stressD_*.md
 !BENCHMARKS/runs/stress_ledger.jsonl
 !BENCHMARKS/runs/panel_summary_*.json
+!BENCHMARKS/runs/STANDINGS_*.json
+!BENCHMARKS/runs/STANDINGS_*.md
+!BENCHMARKS/runs/B006_*.json
+!BENCHMARKS/runs/B010_*.json
+!BENCHMARKS/runs/B016_*.json
+!BENCHMARKS/runs/B016_*.md
+!BENCHMARKS/runs/dev_run_*.json
 BENCHMARKS/meta/*.jsonl
 !BENCHMARKS/meta/.gitkeep
 
