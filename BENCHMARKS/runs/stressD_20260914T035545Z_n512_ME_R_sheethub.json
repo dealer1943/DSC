@@ -1,0 +1,130 @@
+{
+  "bench": "B016_profile_D",
+  "protocol": "stress_d_v0",
+  "experiment": "F030_multiseed_ME_R_s47_talk",
+  "utc": "2026-09-14T03:55:45Z",
+  "run_id": "stressD_20260914T035545Z_n512_ME_R_sheethub",
+  "n": 512,
+  "neuropil": "ME_R",
+  "seed": 47,
+  "warm": 32,
+  "evolve": 2,
+  "ticks": 256,
+  "dsc_family": "sheet_hub_directed",
+  "hub_aware": true,
+  "bilayer": false,
+  "talk_board": true,
+  "prune_stress": false,
+  "task_lag": 2,
+  "task_noise": 0.2,
+  "subgraph": "n512_ME_R_s47.npz",
+  "dsc": {
+    "task_error": 0.4159546374961718,
+    "tick_wall_us": 1137.7500000016028,
+    "n_nodes": 512,
+    "n_edges": 3514,
+    "density": 0.013431078767123288,
+    "utility_mean": 0.12680105122092367,
+    "coverage_mean": 0.4536588796656272,
+    "stem_frac": 0.0,
+    "latent_n": 64,
+    "task_utility_proxy": 0.7062373140486314,
+    "E_edge": 0.0002009781770201,
+    "E_tick": 0.0006207315438783885,
+    "ticks": 256,
+    "seed": 48
+  },
+  "er": {
+    "task_error": 0.4159546374961718,
+    "tick_wall_us": 1137.7500000016028,
+    "n_nodes": 512,
+    "n_edges": 3514,
+    "density": 0.013431078767123288,
+    "utility_mean": 0.12680105122092367,
+    "coverage_mean": 0.4536588796656272,
+    "stem_frac": 0.0,
+    "latent_n": 64,
+    "task_utility_proxy": 0.7062373140486314,
+    "E_edge": 0.0002009781770201,
+    "E_tick": 0.0006207315438783885,
+    "ticks": 256,
+    "seed": 48
+  },
+  "fly_adj": {
+    "task_error": 0.41550885901209866,
+    "tick_wall_us": 1145.0209999992467,
+    "n_nodes": 512,
+    "n_edges": 3514,
+    "density": 0.013431078767123288,
+    "utility_mean": 0.1220443483685868,
+    "coverage_mean": 0.45429290485794194,
+    "stem_frac": 0.0,
+    "latent_n": 64,
+    "task_utility_proxy": 0.7064597255137721,
+    "E_edge": 0.00020104146998115315,
+    "E_tick": 0.000616984077597037,
+    "ticks": 256,
+    "seed": 48
+  },
+  "gaps": [
+    {
+      "metric": "task_error",
+      "dsc": 0.4159546374961718,
+      "er": 0.4159546374961718,
+      "fly_adj": 0.41550885901209866,
+      "winner": "fly_adj",
+      "dev_hint": "Need stronger inductive bias / motifs"
+    },
+    {
+      "metric": "E_tick",
+      "dsc": 0.0006207315438783885,
+      "er": 0.0006207315438783885,
+      "fly_adj": 0.000616984077597037,
+      "winner": "dsc",
+      "dev_hint": "DSC cheaper/tick \u2014 keep while raising task"
+    },
+    {
+      "metric": "E_edge",
+      "dsc": 0.0002009781770201,
+      "er": 0.0002009781770201,
+      "fly_adj": 0.00020104146998115315,
+      "winner": "fly_adj",
+      "dev_hint": "More signal per edge: prune+coverage under skew"
+    },
+    {
+      "metric": "utility_mean",
+      "dsc": 0.12680105122092367,
+      "er": 0.12680105122092367,
+      "fly_adj": 0.1220443483685868,
+      "winner": "dsc",
+      "dev_hint": "Utility OK on this family"
+    },
+    {
+      "metric": "coverage_mean",
+      "dsc": 0.4536588796656272,
+      "er": 0.4536588796656272,
+      "fly_adj": 0.45429290485794194,
+      "winner": "fly_adj",
+      "dev_hint": "Coverage collapse under prune/skew \u2014 strengthen F008 absorb"
+    },
+    {
+      "metric": "tick_wall_us",
+      "dsc": 1137.7500000016028,
+      "er": 1137.7500000016028,
+      "fly_adj": 1145.0209999992467,
+      "winner": "dsc",
+      "dev_hint": "DSC already fast"
+    }
+  ],
+  "scoreboard": {
+    "fly_adj_wins": 3,
+    "dsc_wins": 3,
+    "er_wins": 3
+  },
+  "pass_matched": false,
+  "notes": [
+    "Same DSC software + harness; only adjacency family differs.",
+    "Not biological equivalence \u2014 inductive-bias stress test.",
+    "Development backlog = rows where winner=fly_adj."
+  ]
+}

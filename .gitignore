@@ -90,6 +90,8 @@ BENCHMARKS/runs/**
 !BENCHMARKS/runs/B016_*.json
 !BENCHMARKS/runs/B016_*.md
 !BENCHMARKS/runs/dev_run_*.json
+!BENCHMARKS/runs/F030_multiseed_*.json
+!BENCHMARKS/runs/F030_multiseed_*.md
 BENCHMARKS/meta/*.jsonl
 !BENCHMARKS/meta/.gitkeep
 
