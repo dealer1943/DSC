@@ -129,6 +129,46 @@ def step_population(
     else:
         messages = np.einsum("ji,jh->ih", A, h)
         messages = messages / in_deg[:, None]
+
+    # F029 bilayer: fold sheet — each cell also sees an aligned "one layer up" state.
+    # Layers from node index only (procedural); works on any adjacency family.
+    if bool(getattr(defaults, "BILAYER", False)):
+        n_layers = int(np.clip(round(np.sqrt(n) / 2), 4, 16))
+        chunks = np.array_split(np.arange(n), n_layers)
+        layer_of = np.empty(n, dtype=np.int32)
+        pos_in_layer = np.empty(n, dtype=np.float64)
+        for li, idxs in enumerate(chunks):
+            layer_of[idxs] = li
+            m = max(1, len(idxs))
+            pos_in_layer[idxs] = np.arange(len(idxs)) / m
+        # partner in layer+1 at same fractional position (fold contact)
+        elevated = np.zeros_like(h)
+        for li, idxs in enumerate(chunks[:-1]):
+            above = chunks[li + 1]
+            if len(above) == 0:
+                continue
+            for i in idxs:
+                j = int(pos_in_layer[i] * len(above))
+                j = min(j, len(above) - 1)
+                elevated[i] = h[above[j]]
+        # top sheet: wrap to layer 0 (fold over) — still procedural, not atlas
+        top = chunks[-1]
+        bottom = chunks[0]
+        if len(top) and len(bottom):
+            for i in top:
+                j = int(pos_in_layer[i] * len(bottom))
+                j = min(j, len(bottom) - 1)
+                elevated[i] = h[bottom[j]]
+        bilayer_mix = float(getattr(defaults, "BILAYER_MIX", 0.35))
+        # EMA channel on population (creates lasting 2nd config)
+        prev = getattr(pop, "elevated", None)
+        alpha = float(getattr(defaults, "BILAYER_EMA", 0.25))
+        if prev is None or getattr(prev, "shape", None) != elevated.shape:
+            pop.elevated = elevated.copy()
+        else:
+            pop.elevated = (1.0 - alpha) * prev + alpha * elevated
+        messages = messages + bilayer_mix * pop.elevated
+
     base = np.tanh(np.nan_to_num(messages + pop.bias + inject))
 
     # per-type responses

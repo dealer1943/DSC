@@ -88,3 +88,12 @@ HUB_OUT_EXP = 0.5             # divide source msgs by out_deg**exp
 # Sparse message passing (F026)
 SPARSE_GATHER = True          # use edge-list gather when density is low
 SPARSE_DENSITY_MAX = 0.085    # above this, dense einsum is fine
+
+# Bilayer / folded-sheet state (F029) — procedural, opt-in for A/B
+# Layman: each cell keeps graph messages plus a "one sheet up" view.
+# Tech: index-derived layers (same L rule as F027/F028); mix aligned upper
+# hidden into the message field. No neuropil hardcodes; default off.
+BILAYER = False
+BILAYER_MIX = 0.35          # weight on elevated (upper-aligned) view
+BILAYER_EMA = 0.25          # EMA on elevated channel
+

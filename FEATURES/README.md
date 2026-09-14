@@ -45,3 +45,4 @@ Live FlyWire BRAIN MAP activity field — soma-projected energy with decay/bleed
 - F026 — Sparse message gather (tick parity)
 - F027 — Laminar substrate (optic / ME–LO prior)
 - F028 — Procedural sheet+hub substrate (anti-overfit)
+- F029 — Bilayer elevated state (folded sheet)
