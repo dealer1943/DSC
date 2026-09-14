@@ -1,18 +1,18 @@
 ---
 id: B016
 title: FlyWire efficiency parity (DSC vs biological comparison pack)
-status: spec
+status: implemented
 tier: system / comparison
 measures: [F001, F005, F010, F011, F012]
 related_research: [R002]
-blueprint_for: future `tools/flywire_efficiency_bench` (name TBD)
+tool: `python -m tools.flywire_efficiency_bench`
 updated: 2026-09-13
 ---
 
 ## Purpose
-Define a **reproducible efficiency comparison** between the active DSC runtime and the offline FlyWire pack so the project can claim — with numbers, not vibes — that DSC delivers **more useful dynamical work per unit resource** than treating FlyWire-scale anatomy as the compute substrate.
+**Tool live.** Define a **reproducible efficiency comparison** between the active DSC runtime and the offline FlyWire pack so the project can claim — with numbers, not vibes — that DSC delivers **more useful dynamical work per unit resource** than treating FlyWire-scale anatomy as the compute substrate.
 
-This file is the **blueprint for a future tool**. No harness code is required to accept the spec; an implementation must satisfy the contracts below.
+This file is the **contract**. Implementation: `tools/flywire_efficiency_bench/`. Profile D remains future.
 
 ## Goal statement (project intent)
 **Be more efficient than FlyWire** on the axes that matter for a dynamic connectome: storage, wiring complexity carried at runtime, update cost, and task utility — without pretending a 128-node synthetic MVP “is” a fly brain.
@@ -168,10 +168,10 @@ Bump `schema` when formulas change; keep old reports readable.
 - [x] Future tool I/O + privacy constraint sketched  
 
 ## Acceptance for the **future tool** (later)
-- [ ] CLI runs profiles A,B,C,E on current `MODEL/active` + local FlyWire pack  
-- [ ] Emits JSON + markdown; exit codes as specified  
-- [ ] Path-safe display names only  
-- [ ] Documented in root README under Benchmarks  
+- [x] CLI runs profiles A,B,C,E on current `MODEL/active` + local FlyWire pack  
+- [x] Emits JSON + markdown; exit codes as specified  
+- [x] Path-safe display names only  
+- [x] Documented in root README under Benchmarks  
 
 ## Non-goals
 - Implementing the tool in this slice  
@@ -180,3 +180,14 @@ Bump `schema` when formulas change; keep old reports readable.
 
 ## One-line claim the tool must be able to support or refute
 **Per byte, per edge, and per tick, the DSC runtime produces more harness-defined useful signal than the FlyWire pack under declared profiles — especially when topology is matched (Profile D).**
+
+
+## Implementation notes (2026-09-14)
+- CLI: `PYTHONPATH=. python -m tools.flywire_efficiency_bench --profiles A,B,C,E --seed 42 --ticks 256`
+- Reports land in `BENCHMARKS/runs/B016_<utc>_s<seed>.{json,md}`
+- **Honesty:** with Profile C (`task_utility_proxy=0` on static FlyWire), DSC almost always wins ≥2 E_* scores. That refutes “anatomy alone is compute,” **not** “DSC wiring beats FlyWire wiring.” Profile D (matched subgraph) is required for the latter claim.
+
+## Pass semantics (post-adversarial 2026-09-14)
+- `pass: true` **only** when both sides have a task utility proxy (Profile D / tasked FlyWire) and ≥2 `E_*` wins with `proxy ≥ proxy_min`.
+- Profiles A,B,C,E alone → `pass: false`, `pass_kind: static_null_demo`, `claim_level: static_null_asymmetry`. Exit 0 means the **demo completed**, not that DSC beat FlyWire wiring.
+- Null-opponent `E_*` winners are `na_static_null` and do **not** increment `dsc_E_wins`.

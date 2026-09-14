@@ -120,3 +120,15 @@ Runtime state for the system under development:
 ## License / citation
 
 Biological data retain their upstream licenses and citation requirements (FlyWire / Zenodo, Janelia MaleCNS, hemibrain). Cite those sources when publishing results that use the packs.
+
+## Benchmarks
+Offline integrity / efficiency tools (path-safe reports under `BENCHMARKS/runs/`):
+
+```bash
+PYTHONPATH=. python -m tools.dev_run --seed 42
+PYTHONPATH=. python -m tools.flywire_efficiency_bench --profiles A,B,C,E --ticks 256
+PYTHONPATH=. python -m tools.benches.b006_selection
+PYTHONPATH=. python -m tools.benches.b010_task_footprint
+```
+
+B016 Profile C sets FlyWire task utility to 0 (static anatomy). Winning E_* there means “anatomy ≠ compute,” not matched-topology superiority (needs Profile D).

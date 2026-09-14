@@ -1,7 +1,7 @@
 ---
 id: B006
 title: Evolution loop selection signal
-status: stub
+status: implemented
 tier: feature
 measures: [F006]
 updated: 2026-09-13
@@ -12,3 +12,10 @@ Over multiple cycles, verify that higher-utility lineages increase in representa
 
 ## What integrity looks like
 An “evolution” loop that does not preferentially retain high-utility structure is random churn. This benchmark tests that selection pressure is real, measurable, and rate-faithful.
+
+
+## Runnable
+```bash
+PYTHONPATH=. python -m tools.benches.b006_selection --cycles 3 --seed 42
+```
+Pass: after post-tick re-score, (mean OR elite utility ↑ by δ) AND typed_frac non-decrease; **fail on no-op**. Runs on a temp copy of the tip.

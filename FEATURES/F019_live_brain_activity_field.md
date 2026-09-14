@@ -115,3 +115,6 @@ Suggested id: `S008_live_brain_activity_field` — field datatype + FlyWire adap
 - **Decay + bleed** are what make propagation readable in ASCII.  
 - **One interface:** anything that can emit neuron indices per tick can drive the same field.  
 - **Offline first:** ship or cache what the tick needs; document obtain paths like F011.
+
+## Live atlas paint (2026-09-14)
+Curated `BRAIN MAP` / `WORM MAP` glyph atlases are painted from **live region EMA** (`glyph_levels`) driven by the activity engines (FlyWire kNN recruit · OpenWorm White-edge synapses). Default load enables sensory drive (fly: optic+AL+sense; worm: amphid+ring). `/rest` clears drive; `/stim` / `/pulse` retarget.

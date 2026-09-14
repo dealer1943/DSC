@@ -118,3 +118,10 @@ FlyWire and OpenWorm biology panes use the F019 activity field (propagating spik
 
 ## S007 note
 Build uses **ASCII maps for both fly and worm** in the TUI (reliable in Textual recordings). Fly map is the dense MaleCNS letter silhouette (not sparse neuropil tiles). Raster fly still remains optional later under `UI/assets/biology/`.
+
+
+## Worm map (2026-09-14)
+OpenWorm mid-pane twin of FlyWire `BRAIN MAP`: glyph atlas `WORM_BODY_MAP` in `UI/console/biology.py` (S/N/P/C/V/D/T/`.`) shaped as an elongated S-curve nervous system — dense nerve ring at anterior, longitudinal cord glyphs, tapering tail — not a labeled schematic of individual neuron names.
+
+## Live atlas paint (2026-09-14)
+Curated `BRAIN MAP` / `WORM MAP` glyph atlases are painted from **live region EMA** (`glyph_levels`) driven by the activity engines (FlyWire kNN recruit · OpenWorm White-edge synapses). Default load enables sensory drive (fly: optic+AL+sense; worm: amphid+ring). `/rest` clears drive; `/stim` / `/pulse` retarget.

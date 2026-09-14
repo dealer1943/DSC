@@ -75,3 +75,9 @@ UI/exports/
 !MODELS/worm/**/*.csv
 !MODELS/worm/**/*.md
 !MODELS/worm/**/*.json
+
+# Bench / assay artifacts (regenerate with tools/)
+BENCHMARKS/runs/**
+!BENCHMARKS/runs/.gitkeep
+BENCHMARKS/meta/*.jsonl
+!BENCHMARKS/meta/.gitkeep

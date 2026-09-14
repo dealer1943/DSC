@@ -1,7 +1,7 @@
 ---
 id: R001
 title: Connectome meta-manager (reserved self-benchmarking resource)
-status: open_question
+status: light_implemented
 updated: 2026-09-13
 related_features: [F005, F006, F009, F010]
 related_benchmarks: [B005, B006, B009, B010, B015]
@@ -65,3 +65,7 @@ If experiments support the hypothesis, graduate to a feature stub (e.g. F012) pa
 
 ## One-line claim to test
 **A connectome that reserves capacity to measure and steward itself produces more trustworthy benchmark trajectories than one that only performs the task.**
+
+
+## Light implementation (2026-09-14)
+External assay logger only (not an in-loop cell): `dsc/meta/manager.py` appends JSONL rows to `BENCHMARKS/meta/r001_assay_log.jsonl` from `tools/dev_run`. Still **not** a reserved population resource — that remains the open architectural question above.

@@ -48,6 +48,7 @@ class WormActivityEngine:
         self.ticks = 0
         self.last_n_spikes = 0
         self.loaded = False
+        self._ema = np.zeros(8, dtype=np.float64)
 
     def load(self, edges: pd.DataFrame) -> None:
         nodes = sorted(set(edges["pre"].astype(str)) | set(edges["post"].astype(str)))
@@ -79,6 +80,15 @@ class WormActivityEngine:
         self.name_drive.clear()
         self.ticks = 0
         self.loaded = True
+
+    def glyph_levels(self) -> Dict[str, float]:
+        """Map class glyph → [0,1] live level for atlas paint."""
+        from .worm_layout import WORM_REGIONS
+
+        out: Dict[str, float] = {}
+        for rid, glyph, _c, _lab in WORM_REGIONS:
+            out[glyph] = float(np.clip(self._ema[rid] if rid < len(self._ema) else 0.0, 0.0, 1.0))
+        return out
 
     def rest(self) -> None:
         self.drive.clear()
@@ -148,4 +158,19 @@ class WormActivityEngine:
         if len(fired) > max_spikes:
             fired = self.rng.choice(fired, size=max_spikes, replace=False)
         self.last_n_spikes = int(len(fired))
+        # live region EMA from this tick's fires (+ subthreshold glow)
+        instant = np.zeros(8, dtype=np.float64)
+        if len(fired):
+            for rid in self.region[fired]:
+                if 0 <= int(rid) < 8:
+                    instant[int(rid)] += 1.0
+            peak = instant.max() or 1.0
+            instant /= peak
+        # quiet glow from mean voltage per class so cords stay alive under drive
+        for rid, pool in self.by_class.items():
+            if pool is None or len(pool) == 0 or rid >= 8:
+                continue
+            glow = float(np.mean(self.volt[pool])) / 2.5
+            instant[rid] = max(instant[rid], min(1.0, glow))
+        self._ema = 0.78 * self._ema + 0.22 * instant
         return fired.astype(np.int32)

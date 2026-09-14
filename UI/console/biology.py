@@ -118,6 +118,7 @@ def _paint_fly_line(
     focus: Optional[str],
     phase: float = 0.0,
     row: int = 0,
+    levels: Optional[Dict[str, float]] = None,
 ) -> str:
     parts: List[str] = []
     nbsp = " "
@@ -131,17 +132,23 @@ def _paint_fly_line(
             continue
         hex_c, _ = meta
         wave = _glyph_wave(ch, col, row, phase)
-        if focus is None:
+        live = None if not levels else float(levels.get(ch, 0.0))
+        if live is not None:
+            # neuro-map response: live level dominates, tiny wave for texture
+            level = max(0.08, min(1.0, 0.12 + 0.88 * live + 0.08 * wave))
+            if focus and not _fly_glyph_hit(focus, ch):
+                level *= 0.22
+            parts.append(markup_hex(ch, _hex_pulse(hex_c, level)))
+        elif focus is None:
             parts.append(markup_hex(ch, _hex_pulse(hex_c, wave)))
         elif _fly_glyph_hit(focus, ch):
-            # focused region: brighter pulse
             parts.append(markup_hex(ch, _hex_pulse(hex_c, 0.55 + 0.45 * wave)))
         else:
             parts.append(markup_fg(ch, 0.10 + 0.06 * wave))
     return "".join(parts)
 
 
-def fly_brain_ascii(focus: Optional[str] = None, phase: float = 0.0) -> str:
+def fly_brain_ascii(focus: Optional[str] = None, phase: float = 0.0, levels: Optional[Dict[str, float]] = None) -> str:
     """iLandsAI BRAIN MAP — left mid-row; glyphs pulse with sample phase."""
     map_w = max(len(r) for r in FLY_BRAIN_MAP)
     pad = " "
@@ -152,106 +159,142 @@ def fly_brain_ascii(focus: Optional[str] = None, phase: float = 0.0) -> str:
     ]
     for ri, raw in enumerate(FLY_BRAIN_MAP):
         padded = raw.ljust(map_w).replace(" ", pad)
-        out.append(_paint_fly_line(padded, focus, phase=phase, row=ri))
+        out.append(_paint_fly_line(padded, focus, phase=phase, row=ri, levels=levels))
     out.append(markup_fg(pad * map_w, 0.05))
     tip = (focus or "all")[: max(1, map_w - 7)]
     out.append(markup_fg(f"focus:{tip}".ljust(map_w), 0.38))
     return "\n".join(out)
 
 
-# --- C. elegans geometric wiring map ---
+# --- C. elegans body map (OpenWorm-style S-curve glyph atlas) ---
+# Inspired by the classic OpenWorm whole-nervous-system render: dense nerve
+# ring at the head, longitudinal cords, circumferential “cage”, sparse tail.
+# Glyph language mirrors FLY_BRAIN_MAP so the mid-pane feels the same.
 
-# Tokens that can light under /focus → aliases
+WORM_GLYPH: Dict[str, Tuple[str, Tuple[str, ...]]] = {
+    "S": ("#33d6ff", ("S", "SENSORY", "AMPHID", "ASH", "ASE", "AWC", "ADL", "HEAD")),
+    "N": ("#ffcc33", ("N", "RING", "NERVE RING", "RI", "RM", "URY", "OLQ", "CEP")),
+    "P": ("#ee9944", ("P", "PHARYNX", "I1", "I2", "M1", "NSM", "PHARYNGEAL")),
+    "C": ("#55ee66", ("C", "COMMAND", "AVA", "AVB", "AVD", "AVE", "PVC", "AVAL", "AVAR")),
+    "V": ("#b78cff", ("V", "VENTRAL", "MOTOR_V", "MOTOR", "VA", "VB", "VD", "AS", "VC")),
+    "D": ("#ff66aa", ("D", "DORSAL", "MOTOR_D", "MOTOR", "DA", "DB", "DD")),
+    "T": ("#ff3333", ("T", "TAIL", "PLM", "PLN", "PVR", "PQR", "PDA", "PDB")),
+    ".": ("#555555", (".", "OTHER", "CORD", "PROCESS")),
+}
+
+WORM_LEGEND = "S sense  N ring  P pharynx  C cmd  V vent  D dors  T tail"
+
+# Anterior (head) LEFT → posterior (tail) RIGHT. ~44 cols, S-curve silhouette
+# matching the OpenWorm 3D nervous-system cage (ring dense, cords, taper).
+WORM_BODY_MAP = (
+    "  SSS.NNN.                                  ",
+    " SNNNNNNNNPP.                     ..D..TT   ",
+    "SSNNNNNNNNPPPCC.              ..DDDDVVVTTT  ",
+    " SNNNNNN.PPCCCCCVV..    ...DDDDDVVVVVV.TT   ",
+    "  NNNNN..P.CCCCCVVVVVVVVVVVVVVDDDDDD..T     ",
+    "   NN....P..CCCVVVVVVVVVVVVVVVDDDDD...      ",
+    "    ......C..VVVVVVVVVVVVVVDDDD.....        ",
+    "      ......VVVVVVVVVVVDDD......            ",
+    "         .....VVVVVV........                ",
+    "             ..........                     ",
+)
+
+# Focus token aliases (slash commands) → still light the matching glyphs
 WORM_TOKENS: Dict[str, Tuple[str, ...]] = {
-    "ASHL": ("ASHL", "ASH", "AMPHID", "SENSORY"),
-    "ASHR": ("ASHR", "ASH", "AMPHID", "SENSORY"),
-    "ASEL": ("ASEL", "ASE", "AMPHID", "SENSORY"),
-    "ASER": ("ASER", "ASE", "AMPHID", "SENSORY"),
-    "AWCL": ("AWCL", "AWC", "AMPHID", "SENSORY"),
-    "AWCR": ("AWCR", "AWC", "AMPHID", "SENSORY"),
-    "RING": ("RING", "NERVE RING", "RI", "RM", "URY", "OLQ", "CEP"),
-    "AVAL": ("AVAL", "AVA", "COMMAND"),
-    "AVAR": ("AVAR", "AVA", "COMMAND"),
-    "AVBL": ("AVBL", "AVB", "COMMAND"),
-    "AVBR": ("AVBR", "AVB", "COMMAND"),
-    "AVDL": ("AVDL", "AVD", "COMMAND"),
-    "AVDR": ("AVDR", "AVD", "COMMAND"),
-    "PVCL": ("PVCL", "PVC", "COMMAND", "TAIL"),
-    "PVCR": ("PVCR", "PVC", "COMMAND", "TAIL"),
-    "VA": ("VA", "MOTOR", "VENTRAL", "MOTOR_V"),
-    "VB": ("VB", "MOTOR", "VENTRAL", "MOTOR_V"),
-    "VD": ("VD", "MOTOR", "VENTRAL", "MOTOR_V"),
-    "DA": ("DA", "MOTOR", "DORSAL", "MOTOR_D"),
-    "DB": ("DB", "MOTOR", "DORSAL", "MOTOR_D"),
-    "DD": ("DD", "MOTOR", "DORSAL", "MOTOR_D"),
-    "AS": ("AS", "MOTOR", "VENTRAL", "MOTOR_V"),
-    "PHARYNX": ("PHARYNX", "I1", "I2", "M1", "NSM", "PHARYNGEAL"),
+    "ASHL": ("ASHL", "ASH", "AMPHID", "SENSORY", "S"),
+    "ASHR": ("ASHR", "ASH", "AMPHID", "SENSORY", "S"),
+    "ASEL": ("ASEL", "ASE", "AMPHID", "SENSORY", "S"),
+    "ASER": ("ASER", "ASE", "AMPHID", "SENSORY", "S"),
+    "AWCL": ("AWCL", "AWC", "AMPHID", "SENSORY", "S"),
+    "AWCR": ("AWCR", "AWC", "AMPHID", "SENSORY", "S"),
+    "RING": ("RING", "NERVE RING", "N", "RI", "RM", "URY", "OLQ", "CEP"),
+    "AVAL": ("AVAL", "AVA", "COMMAND", "C"),
+    "AVAR": ("AVAR", "AVA", "COMMAND", "C"),
+    "AVBL": ("AVBL", "AVB", "COMMAND", "C"),
+    "AVBR": ("AVBR", "AVB", "COMMAND", "C"),
+    "AVDL": ("AVDL", "AVD", "COMMAND", "C"),
+    "AVDR": ("AVDR", "AVD", "COMMAND", "C"),
+    "PVCL": ("PVCL", "PVC", "COMMAND", "C", "TAIL", "T"),
+    "PVCR": ("PVCR", "PVC", "COMMAND", "C", "TAIL", "T"),
+    "VA": ("VA", "MOTOR", "VENTRAL", "MOTOR_V", "V"),
+    "VB": ("VB", "MOTOR", "VENTRAL", "MOTOR_V", "V"),
+    "VD": ("VD", "MOTOR", "VENTRAL", "MOTOR_V", "V"),
+    "DA": ("DA", "MOTOR", "DORSAL", "MOTOR_D", "D"),
+    "DB": ("DB", "MOTOR", "DORSAL", "MOTOR_D", "D"),
+    "DD": ("DD", "MOTOR", "DORSAL", "MOTOR_D", "D"),
+    "AS": ("AS", "MOTOR", "VENTRAL", "MOTOR_V", "V"),
+    "PHARYNX": ("PHARYNX", "I1", "I2", "M1", "NSM", "PHARYNGEAL", "P"),
 }
 
 
-def _worm_token_on(focus: Optional[str], token: str) -> bool:
+def _worm_glyph_hit(focus: Optional[str], glyph: str) -> bool:
     if not focus:
         return False
-    return _any_hit(focus, WORM_TOKENS.get(token, (token,)))
+    meta = WORM_GLYPH.get(glyph)
+    if not meta:
+        return False
+    if _any_hit(focus, meta[1]):
+        return True
+    # also allow named neuron tokens to light their region glyph
+    for _tok, aliases in WORM_TOKENS.items():
+        if _any_hit(focus, aliases) and glyph in aliases:
+            return True
+        if _any_hit(focus, aliases):
+            # map token → primary glyph letter if present in aliases
+            for a in aliases:
+                if len(a) == 1 and a in WORM_GLYPH and a == glyph:
+                    return True
+    return False
 
 
-def _w(token: str, focus: Optional[str], idle: float = 0.45) -> str:
-    """Paint a named neuron/region token."""
-    on = _worm_token_on(focus, token) if focus else True
-    if focus is None:
-        return markup_fg(token, idle)
-    return _hi(token, on, 0.95)
+def _paint_worm_line(
+    raw: str,
+    focus: Optional[str],
+    phase: float = 0.0,
+    row: int = 0,
+    levels: Optional[Dict[str, float]] = None,
+) -> str:
+    parts: List[str] = []
+    for col, ch in enumerate(raw):
+        if ch == " " or ch == " ":
+            parts.append(ch)
+            continue
+        meta = WORM_GLYPH.get(ch)
+        if not meta:
+            parts.append(markup_fg(ch, 0.22))
+            continue
+        hex_c, _aliases = meta
+        wave = _glyph_wave(ch, col, row, phase)
+        live = None if not levels else float(levels.get(ch, 0.0))
+        if live is not None:
+            level = max(0.08, min(1.0, 0.12 + 0.88 * live + 0.08 * wave))
+            if focus and not _worm_glyph_hit(focus, ch):
+                level *= 0.22
+        elif focus:
+            level = 0.95 if _worm_glyph_hit(focus, ch) else 0.18
+        else:
+            level = wave
+        parts.append(markup_hex(ch, _hex_pulse(hex_c, level)))
+    return "".join(parts)
 
 
-def worm_brain_ascii(focus: Optional[str] = None, phase: float = 0.0) -> str:
-    """Geometric C. elegans wiring sketch — head→tail with ring, commands, cords."""
-    # Build as plain geometry; substitute painted tokens.
-    ash_l = _w("ASHL", focus)
-    ase_l = _w("ASEL", focus)
-    awc_l = _w("AWCL", focus)
-    ash_r = _w("ASHR", focus)
-    ase_r = _w("ASER", focus)
-    awc_r = _w("AWCR", focus)
-    ring = _w("RING", focus)
-    aval = _w("AVAL", focus)
-    avar = _w("AVAR", focus)
-    avbl = _w("AVBL", focus)
-    avbr = _w("AVBR", focus)
-    avdl = _w("AVDL", focus)
-    avdr = _w("AVDR", focus)
-    pvcl = _w("PVCL", focus)
-    pvcr = _w("PVCR", focus)
-    va = _w("VA", focus)
-    vb = _w("VB", focus)
-    vd = _w("VD", focus)
-    da = _w("DA", focus)
-    db = _w("DB", focus)
-    dd = _w("DD", focus)
-    asa = _w("AS", focus)
-    phx = _w("PHARYNX", focus)
-
-    # Fixed-width geometric body (~38 cols) for mid-pane
-    dim = lambda s: markup_fg(s, 0.28)
-    lines = [
-        markup_fg("C. elegans  ·  wiring map", 0.55),
-        dim("ant.") + " " + dim("─" * 28) + " " + dim("post."),
-        "",
-        f"  {ash_l} {ase_l}          {ase_r} {ash_r}",
-        f"    {awc_l}   \\        /   {awc_r}",
-        f"         {dim('╭──')}{ring}{dim('──╮')}",
-        f"         {dim('│')}  {phx}   {dim('│')}",
-        f"         {dim('╰────┬─────╯')}",
-        f"      {aval}─{avar}  {dim('│')}  {avbl}─{avbr}",
-        f"      {avdl}─{avdr}  {dim('│')}",
-        f"  {dim('═')}{da}{dim('═')}{db}{dim('═')}{dd}{dim('═')}{dim(' dors')}",
-        f"  {dim('═')}{va}{dim('═')}{vb}{dim('═')}{vd}{dim('═')}{asa}{dim('═ vent')}",
-        f"              {dim('│')}",
-        f"           {pvcl}─{pvcr}",
-        f"              {dim('▼')} {dim('tail')}",
-        "",
-        markup_fg(f"focus: {focus or 'all'}  ·  /focus AVAL|amphid|motor|ring", 0.38),
+def worm_brain_ascii(focus: Optional[str] = None, phase: float = 0.0, levels: Optional[Dict[str, float]] = None) -> str:
+    """OpenWorm-style C. elegans nervous-system glyph map (fly mid-pane twin)."""
+    map_w = max(len(r) for r in WORM_BODY_MAP)
+    pad = "\u00a0"
+    out: List[str] = [
+        markup_fg("WORM MAP".ljust(map_w), 0.55),
+        markup_fg(WORM_LEGEND[:map_w].ljust(map_w), 0.32),
+        markup_fg(("ant." + " " * (map_w - 8) + "post.")[:map_w].ljust(map_w), 0.28),
+        markup_fg(pad * map_w, 0.05),
     ]
-    return "\n".join(lines)
+    for ri, raw in enumerate(WORM_BODY_MAP):
+        padded = raw.ljust(map_w).replace(" ", pad)
+        out.append(_paint_worm_line(padded, focus, phase=phase, row=ri, levels=levels))
+    out.append(markup_fg(pad * map_w, 0.05))
+    tip = (focus or "all")[: max(1, map_w - 7)]
+    out.append(markup_fg(f"focus:{tip}".ljust(map_w), 0.38))
+    return "\n".join(out)
 
 
 def biology_panel(
@@ -262,16 +305,17 @@ def biology_panel(
 ) -> str:
     """Markup for the mid-row biology pane, or empty to hide.
 
-    FlyWire: prefer F019 live activity field markup when provided.
+    Prefer live atlas markup (neuro-map response) when the adapter provides it.
     """
-    del phase  # kept for call-site compatibility
     m = (mode or "").upper()
     if m in ("FLYWIRE", "FLY"):
         if live_markup:
             return live_markup
-        return fly_brain_ascii(focus)
+        return fly_brain_ascii(focus, phase=phase)
     if m in ("OPENWORM", "WORM", "CELEGANS"):
-        return worm_brain_ascii(focus)
+        if live_markup:
+            return live_markup
+        return worm_brain_ascii(focus, phase=phase)
     return ""
 
 

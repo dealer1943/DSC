@@ -1,5 +1,34 @@
 # DSC Handoff (read first)
 
+## Adversarial resolution 2026-09-14 (benches)
+
+Review: `RESEARCH/ADVERSARIAL_REVIEW_2026-09-14_benches.md`
+
+Patches applied:
+- **B016** `pass` false under A/B/C/E; `pass_kind=static_null_demo`; null-opponent winners `na_static_null`; proxy floor; isolate tip; scrub paths
+- **B006** temp copy; post-tick re-score; (mean|elite)↑δ + typed non-decrease; fail no-op
+- **B010** pass aligned to G1 (`task_error<=0.05`); temp copy
+- **F020** G3 real byte cap; G4/G5 fail on `--skip-b016`; path-leak scan; assert `save_named` refreshed active
+- **R001** stronger path/hostname scrub + Path-safe JSON default
+
+Still open: **Profile D** (matched FlyWire subgraph) required before any true `efficiency_vs_flywire` pass.
+
+---
+
+## Slice 2026-09-14 — F020 / B016 / B006 / B010 / R001-light
+
+Shipped runnable development + efficiency stack (local Mac, not cloud):
+
+- **F020** `FEATURES/F020_dsc_development_run.md` + `python -m tools.dev_run` (`dev_run_v0` gates G1–G5)
+- **B016** `tools/flywire_efficiency_bench` — profiles A,B,C,E → JSON+MD; honesty note: static-null asymmetry
+- **B006 / B010** `tools/benches/`
+- **R001 light** `dsc/meta/manager.py` → `BENCHMARKS/meta/r001_assay_log.jsonl`
+- Sample pass: short `dev_run` checkpoint `dsc_dev_*`, B016 4/4 E wins vs Profile C null
+
+Next: Profile D matched subgraph; harden B016 pass rule so C-null alone cannot overclaim; adversarial follow-ups.
+
+---
+
 **Project:** Dynamic State Connectome (DSC)  
 **Root:** `~/Source/repos/DSC`
 **Authority order:** `HANDOFF.md` → active slice in `SLICES/` → `design_doc.md` → folder docs

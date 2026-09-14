@@ -27,3 +27,13 @@ Stubs first; harness code later. Each file states what is measured and why the m
 | B016 | `B016_flywire_efficiency_parity.md` | system / comparison | F011 + R002; blueprint for efficiency tool |
 
 3. **B016+** — cross-artifact / biological comparison efficiency.
+
+## Runnable tools
+| Bench | Command |
+|-------|---------|
+| B006 | `PYTHONPATH=. python -m tools.benches.b006_selection` |
+| B010 | `PYTHONPATH=. python -m tools.benches.b010_task_footprint` |
+| B016 | `PYTHONPATH=. python -m tools.flywire_efficiency_bench` |
+| F020 | `PYTHONPATH=. python -m tools.dev_run` |
+
+Reports: `BENCHMARKS/runs/`. Meta log: `BENCHMARKS/meta/r001_assay_log.jsonl`.

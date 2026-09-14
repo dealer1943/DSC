@@ -116,7 +116,7 @@ class FlyWirePackAdapter:
                 self._activity.x, self._activity.y, self._activity.region,
                 width=44, height=16,
             )
-            self._activity.stim(["optic", "AL"], strength=0.28)
+            self._activity.stim(["optic", "AL", "SENSE"], strength=0.55)
             self._stim_on = True
             self._prog(0.98, "flywire: activity field ready")
         except Exception as exc:  # noqa: BLE001
@@ -124,7 +124,7 @@ class FlyWirePackAdapter:
             self._log(f"activity field unavailable: {exc}")
         return [
             f"FLYWIRE loaded · {n:,} edges · pack {pack_label(self.pack_dir)}",
-            "tip: BRAIN MAP is live — /stim optic|AL|taste  ·  /pulse MB  ·  /rest  ·  /focus AL",
+            "tip: BRAIN MAP live sensory — optic+AL+sense on · /stim · /pulse MB · /rest",
         ]
 
     def _filtered(self) -> pd.DataFrame:
@@ -353,10 +353,16 @@ class FlyWirePackAdapter:
 
 
     def brain_map_markup(self, focus: Optional[str] = None) -> str:
-        """F019 live BRAIN MAP paint for the biology pane."""
-        if self._field is None:
+        """Paint curated BRAIN MAP atlas from live kNN/region activity levels."""
+        if not self._activity.loaded:
             return ""
-        return self._field.paint_markup(focus=focus)
+        from console.biology import fly_brain_ascii
+
+        return fly_brain_ascii(
+            focus=focus,
+            phase=float(self._activity.ticks) * 0.12,
+            levels=self._activity.glyph_levels(),
+        )
 
 
 # module-level factory used by console

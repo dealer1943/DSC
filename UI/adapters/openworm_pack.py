@@ -118,7 +118,7 @@ class OpenWormPackAdapter:
                 legend=WORM_LEGEND,
                 title="WORM MAP",
             )
-            self._activity.stim(["amphid"], strength=0.45)
+            self._activity.stim(["amphid", "ring"], strength=0.72)
             self._stim_on = True
             self._prog(0.98, "openworm: activity field ready")
         except Exception as exc:  # noqa: BLE001
@@ -128,7 +128,7 @@ class OpenWormPackAdapter:
         self._log(f"loaded {n:,} edges from {pack_label(self.pack_dir)}")
         return [
             f"OPENWORM loaded · {n:,} edges · pack {pack_label(self.pack_dir)}",
-            "tip: WORM MAP is live — /stim amphid|command|motor  ·  /pulse AVAL  ·  /rest",
+            "tip: WORM MAP live sensory — amphid+ring on · /stim · /pulse AVAL · /rest",
         ]
 
     def _filtered(self) -> pd.DataFrame:
@@ -273,9 +273,16 @@ class OpenWormPackAdapter:
                 self._signals[key] = h[-64:]
 
     def brain_map_markup(self, focus: Optional[str] = None) -> str:
-        if self._field is None:
+        """Paint curated WORM MAP atlas from live White-edge activity levels."""
+        if not self._activity.loaded:
             return ""
-        return self._field.paint_markup(focus=focus)
+        from console.biology import worm_brain_ascii
+
+        return worm_brain_ascii(
+            focus=focus,
+            phase=float(self._activity.ticks) * 0.15,
+            levels=self._activity.glyph_levels(),
+        )
 
     def request(self, verb: str, args: List[str]) -> List[str]:
         caps = self.capabilities()

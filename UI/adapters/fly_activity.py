@@ -62,6 +62,7 @@ class FlyActivityEngine:
         self.ticks = 0
         self.last_n_spikes = 0
         self.loaded = False
+        self._ema = np.zeros(13, dtype=np.float64)
 
     def load(self, layout_path: Optional[Path] = None, knn_path: Optional[Path] = None) -> None:
         base = _assets_dir()
@@ -86,6 +87,16 @@ class FlyActivityEngine:
         self.ticks = 0
         self.last_n_spikes = 0
         self.loaded = True
+        self._ema = np.zeros(13, dtype=np.float64)
+
+    def glyph_levels(self) -> Dict[str, float]:
+        """Map atlas glyph → [0,1] from live region EMA."""
+        from console.brain_field import GLYPH
+
+        out: Dict[str, float] = {}
+        for rid, g in GLYPH.items():
+            out[g] = float(np.clip(self._ema[rid] if rid < len(self._ema) else 0.0, 0.0, 1.0))
+        return out
 
     def rest(self) -> None:
         self.drive.clear()
@@ -151,9 +162,24 @@ class FlyActivityEngine:
 
         if not fired:
             self.last_n_spikes = 0
+            self._ema *= 0.90
             return np.zeros(0, dtype=np.int32)
         idx = np.unique(np.concatenate(fired)).astype(np.int32)
         if len(idx) > max_spikes:
             idx = self.rng.choice(idx, size=max_spikes, replace=False).astype(np.int32)
         self.last_n_spikes = int(len(idx))
+        instant = np.zeros(13, dtype=np.float64)
+        for rid in self.region[idx]:
+            r = int(rid)
+            if 0 <= r < 13:
+                instant[r] += 1.0
+        peak = float(instant.max()) or 1.0
+        instant /= peak
+        # recruitment glow so neighbor spread shows on atlas
+        for rid, pool in self.by_region.items():
+            if pool is None or len(pool) == 0 or rid >= 13:
+                continue
+            glow = float(np.mean(self.recruit[pool]))
+            instant[rid] = max(instant[rid], min(1.0, glow))
+        self._ema = 0.78 * self._ema + 0.22 * instant
         return idx
