@@ -38,3 +38,5 @@ Biology identity pane — fly still (fruitfly demo asset) + *C. elegans* ASCII m
 Live FlyWire BRAIN MAP activity field — soma-projected energy with decay/bleed and region glyph paint (behavioral source: https://github.com/dealer1943/FlyBrains). See `FEATURES/F019_live_brain_activity_field.md`.
 - F020 — DSC development run (`tools/dev_run`, protocol `dev_run_v0`)
 - F021 — FlyWire matched-topology stress (Profile D path)
+- F022 — Structured substrate families (preferential / modular)
+- F023 — Hub-aware message passing

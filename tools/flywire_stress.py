@@ -60,32 +60,31 @@ def _eval_runtime(rt, ticks: int, seed: int) -> dict[str, Any]:
     }
 
 
-def _gaps(er: dict, fly: dict) -> list[dict[str, Any]]:
-    """Where fly is better → development target."""
+def _gaps(dsc: dict, fly: dict) -> list[dict[str, Any]]:
+    """Where fly is better → development target. winner dsc|fly_adj|tie."""
     rows = []
-    # lower task_error better
-    te_er, te_fly = er["task_error"], fly["task_error"]
+    te_d, te_fly = dsc["task_error"], fly["task_error"]
     rows.append({
         "metric": "task_error",
-        "er": te_er,
+        "dsc": te_d,
+        "er": te_d,
         "fly_adj": te_fly,
-        "winner": "fly_adj" if te_fly < te_er - 1e-9 else ("er" if te_er < te_fly - 1e-9 else "tie"),
-        "dev_hint": "Grow beyond ER: motifs / neuropil-like inductive bias (F001 family)" if te_fly < te_er else "ER holding on task — push scale or harder harness",
+        "winner": "fly_adj" if te_fly < te_d - 1e-9 else ("dsc" if te_d < te_fly - 1e-9 else "tie"),
+        "dev_hint": "Need stronger inductive bias / motifs" if te_fly < te_d else "DSC holding on task — push scale or harder harness",
     })
-    for metric, higher_better, hint_fly, hint_er in (
-        ("E_tick", True, "Optimize message passing / hub handling on biological degree skew", "Synthetic wiring is cheaper/tick — keep while raising task"),
-        ("E_edge", True, "Need more signal per edge: prune+coverage (F007/F008) under fly skew", "Good edge efficiency on ER — test at N=512"),
-        ("utility_mean", True, "Retune F005 terms / type emergence for hub-heavy graphs", "Utility OK on ER"),
-        ("tick_wall_us", False, "Sparse kernels; avoid dense gather on fly hubs", "ER already fast"),
+    for metric, higher_better, hint_fly, hint_dsc in (
+        ("E_tick", True, "Optimize message passing / hub handling", "DSC cheaper/tick — keep while raising task"),
+        ("E_edge", True, "More signal per edge: prune+coverage under skew", "Good edge efficiency — test at larger N"),
+        ("utility_mean", True, "Retune F005 / type emergence for hubs", "Utility OK on this family"),
+        ("tick_wall_us", False, "Sparse kernels on hubs", "DSC already fast"),
     ):
-        a, b = er[metric], fly[metric]
+        a, b = dsc[metric], fly[metric]
         if higher_better:
-            winner = "fly_adj" if b > a + 1e-12 else ("er" if a > b + 1e-12 else "tie")
-            hint = hint_fly if winner == "fly_adj" else hint_er
+            winner = "fly_adj" if b > a + 1e-12 else ("dsc" if a > b + 1e-12 else "tie")
         else:
-            winner = "fly_adj" if b < a - 1e-12 else ("er" if a < b - 1e-12 else "tie")
-            hint = hint_fly if winner == "fly_adj" else hint_er
-        rows.append({"metric": metric, "er": a, "fly_adj": b, "winner": winner, "dev_hint": hint})
+            winner = "fly_adj" if b < a - 1e-12 else ("dsc" if a < b - 1e-12 else "tie")
+        hint = hint_fly if winner == "fly_adj" else hint_dsc
+        rows.append({"metric": metric, "dsc": a, "er": a, "fly_adj": b, "winner": winner, "dev_hint": hint})
     return rows
 
 
@@ -98,8 +97,10 @@ def run_stress(
     evolve: int = 2,
     feather: Path | None = None,
     out_dir: Path | None = None,
+    dsc_family: str = "erdos_renyi_directed",
+    experiment: str = "baseline",
 ) -> dict[str, Any]:
-    from dsc.runtime import generate_substrate
+    from dsc.substrate import generate_substrate
     from tools.flywire_subgraph.extract import extract_subgraph, save_subgraph
 
     out_dir = Path(out_dir or "BENCHMARKS/runs")
@@ -110,10 +111,15 @@ def run_stress(
     sub_path = Path(f"MODELS/fly/subgraphs/n{n}_{neuropil}_s{seed}.npz")
     save_subgraph(bundle, sub_path)
 
-    # ER matched N
-    er_sub = generate_substrate(n=n, seed=seed)
-    # density may differ — that's part of the stress
-    rt_er = _build_on_adj(er_sub.adj, er_sub.meta, seed=seed)
+    fly_edges = int(bundle["adj"].sum())
+    # DSC side: chosen family; match fly edge budget when not pure ER-p
+    dsc_sub = generate_substrate(
+        n=n,
+        seed=seed,
+        family=dsc_family,
+        target_edges=fly_edges,
+    )
+    rt_er = _build_on_adj(dsc_sub.adj, dsc_sub.meta, seed=seed)
     rt_fly = _build_on_adj(bundle["adj"], bundle["meta"], seed=seed)
 
     for rt in (rt_er, rt_fly):
@@ -123,29 +129,34 @@ def run_stress(
         if evolve > 0:
             rt.evolve(n=evolve, seed=seed)
 
-    er_m = _eval_runtime(rt_er, ticks=ticks, seed=seed + 1)
+    dsc_m = _eval_runtime(rt_er, ticks=ticks, seed=seed + 1)
     fly_m = _eval_runtime(rt_fly, ticks=ticks, seed=seed + 1)
-    gaps = _gaps(er_m, fly_m)
+    gaps = _gaps(dsc_m, fly_m)
     fly_wins = sum(1 for g in gaps if g["winner"] == "fly_adj")
-    er_wins = sum(1 for g in gaps if g["winner"] == "er")
+    dsc_wins = sum(1 for g in gaps if g["winner"] == "dsc")
 
+    fam_slug = dsc_sub.meta.get("family", dsc_family).replace("_directed", "").replace("_", "")[:12]
     report = {
         "bench": "B016_profile_D",
         "protocol": PROTOCOL,
+        "experiment": experiment,
         "utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "run_id": f"stressD_{_utc_stamp()}_n{n}_{neuropil}",
+        "run_id": f"stressD_{_utc_stamp()}_n{n}_{neuropil}_{fam_slug}",
         "n": n,
         "neuropil": neuropil,
         "seed": seed,
         "warm": warm,
         "evolve": evolve,
         "ticks": ticks,
+        "dsc_family": dsc_sub.meta.get("family", dsc_family),
+        "hub_aware": bool(__import__("dsc.defaults", fromlist=["HUB_AWARE"]).HUB_AWARE),
         "subgraph": sub_path.name,
-        "er": er_m,
+        "dsc": dsc_m,
+        "er": dsc_m,  # backward-compatible alias
         "fly_adj": fly_m,
         "gaps": gaps,
-        "scoreboard": {"fly_adj_wins": fly_wins, "er_wins": er_wins},
-        "pass_matched": fly_wins == 0 and er_m["task_error"] <= fly_m["task_error"],
+        "scoreboard": {"fly_adj_wins": fly_wins, "dsc_wins": dsc_wins, "er_wins": dsc_wins},
+        "pass_matched": fly_wins == 0 and dsc_m["task_error"] <= fly_m["task_error"],
         "notes": [
             "Same DSC software + harness; only adjacency family differs.",
             "Not biological equivalence — inductive-bias stress test.",
@@ -167,16 +178,17 @@ def _render_md(report: dict) -> str:
         "",
         f"- run: `{report['run_id']}`",
         f"- N={report['n']} neuropil=`{report['neuropil']}` seed={report['seed']}",
-        f"- scoreboard: fly_adj wins **{report['scoreboard']['fly_adj_wins']}** · ER wins **{report['scoreboard']['er_wins']}**",
+        f"- scoreboard: fly_adj wins **{report['scoreboard']['fly_adj_wins']}** · DSC wins **{report['scoreboard'].get('dsc_wins', report['scoreboard'].get('er_wins'))}**",
+        f"- dsc_family: `{report.get('dsc_family')}` · experiment: `{report.get('experiment')}`",
         "",
         "## Side-by-side",
         "",
-        "| metric | ER | FlyWire-adj |",
-        "|--------|----|-------------|",
+        "| metric | DSC | FlyWire-adj |",
+        "|--------|-----|-------------|",
     ]
-    er, fly = report["er"], report["fly_adj"]
+    dsc, fly = report.get("dsc") or report.get("er") or {}, report["fly_adj"]
     for k in ("n_nodes", "n_edges", "density", "task_error", "tick_wall_us", "utility_mean", "E_edge", "E_tick"):
-        lines.append(f"| `{k}` | {er.get(k)} | {fly.get(k)} |")
+        lines.append(f"| `{k}` | {dsc.get(k)} | {fly.get(k)} |")
     lines += ["", "## Gaps → development targets", "", "| metric | winner | hint |", "|--------|--------|------|"]
     for g in report["gaps"]:
         lines.append(f"| `{g['metric']}` | **{g['winner']}** | {g['dev_hint']} |")
@@ -187,7 +199,32 @@ def _render_md(report: dict) -> str:
     return "\n".join(lines)
 
 
+def _append_ledger(report: dict[str, Any], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    dsc = report.get("dsc") or report.get("er") or {}
+    row = {
+        "utc": report.get("utc"),
+        "experiment": report.get("experiment"),
+        "run_id": report.get("run_id"),
+        "n": report.get("n"),
+        "neuropil": report.get("neuropil"),
+        "dsc_family": report.get("dsc_family"),
+        "hub_aware": report.get("hub_aware"),
+        "fly_wins": (report.get("scoreboard") or {}).get("fly_adj_wins"),
+        "dsc_wins": (report.get("scoreboard") or {}).get("dsc_wins"),
+        "dsc_task_error": dsc.get("task_error"),
+        "fly_task_error": (report.get("fly_adj") or {}).get("task_error"),
+        "dsc_edges": dsc.get("n_edges"),
+        "fly_edges": (report.get("fly_adj") or {}).get("n_edges"),
+        "md": report.get("md_path"),
+        "json": report.get("json_path"),
+    }
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row) + "\n")
+
+
 def main(argv=None) -> int:
+
     ap = argparse.ArgumentParser(description="F021 FlyWire matched-topology stress")
     ap.add_argument("--n", type=int, default=128)
     ap.add_argument("--neuropil", type=str, default="GNG")
@@ -196,6 +233,9 @@ def main(argv=None) -> int:
     ap.add_argument("--warm", type=int, default=32)
     ap.add_argument("--evolve", type=int, default=2)
     ap.add_argument("--out", type=Path, default=Path("BENCHMARKS/runs"))
+    ap.add_argument("--dsc-family", type=str, default="erdos_renyi_directed",
+                    help="er|preferential|modular (F022)")
+    ap.add_argument("--experiment", type=str, default="baseline")
     args = ap.parse_args(argv)
     report = run_stress(
         n=args.n,
@@ -205,14 +245,21 @@ def main(argv=None) -> int:
         warm=args.warm,
         evolve=args.evolve,
         out_dir=args.out,
+        dsc_family=args.dsc_family,
+        experiment=args.experiment,
     )
+    _append_ledger(report, Path(args.out) / "stress_ledger.jsonl")
     print(json.dumps({
         "run_id": report["run_id"],
+        "experiment": report.get("experiment"),
+        "dsc_family": report.get("dsc_family"),
+        "hub_aware": report.get("hub_aware"),
         "scoreboard": report["scoreboard"],
-        "er_task_error": report["er"]["task_error"],
+        "dsc_task_error": (report.get("dsc") or report["er"])["task_error"],
         "fly_task_error": report["fly_adj"]["task_error"],
         "gaps": [{"metric": g["metric"], "winner": g["winner"]} for g in report["gaps"]],
         "md": report["md_path"],
+        "json": report["json_path"],
     }, indent=2))
     # exit 0 always for first exploratory stress; pass_matched is informational
     return 0

@@ -102,9 +102,18 @@ def step_population(
     inject = np.tanh(inp) * 0.5
     A = sub.adj.astype(np.float64)
     h = np.nan_to_num(pop.hidden, nan=0.0, posinf=0.0, neginf=0.0)
-    messages = np.einsum("ji,jh->ih", A, h)  # gather from sources (avoids spurious np2 matmul warns)
-    deg = np.clip(A.sum(axis=0), 1.0, None)[:, None]
-    messages = messages / deg
+    if getattr(defaults, "HUB_AWARE", False):
+        # F023: damp loud senders; softer receiver normalize on hubs
+        out_deg = np.clip(A.sum(axis=1), 1.0, None)
+        exp = float(getattr(defaults, "HUB_OUT_EXP", 0.5))
+        A_eff = A / (out_deg[:, None] ** exp)
+        messages = np.einsum("ji,jh->ih", A_eff, h)
+        in_deg = np.clip(A.sum(axis=0), 1.0, None)[:, None]
+        messages = messages / np.log1p(in_deg)
+    else:
+        messages = np.einsum("ji,jh->ih", A, h)  # gather from sources
+        deg = np.clip(A.sum(axis=0), 1.0, None)[:, None]
+        messages = messages / deg
     base = np.tanh(np.nan_to_num(messages + pop.bias + inject))
 
     # per-type responses

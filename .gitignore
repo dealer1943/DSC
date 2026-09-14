@@ -81,6 +81,7 @@ BENCHMARKS/runs/**
 !BENCHMARKS/runs/.gitkeep
 !BENCHMARKS/runs/stressD_*.json
 !BENCHMARKS/runs/stressD_*.md
+!BENCHMARKS/runs/stress_ledger.jsonl
 BENCHMARKS/meta/*.jsonl
 !BENCHMARKS/meta/.gitkeep
 

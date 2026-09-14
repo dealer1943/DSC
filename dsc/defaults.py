@@ -80,3 +80,7 @@ ABSORB_TOP = 3                 # number of surviving absorbers per prune
 EVOLVE_CROSSOVER_RATE = 0.35   # fraction of replacements that blend two elites
 EVOLVE_CROSSOVER_ALPHA = 0.5   # mix weight parent_a vs parent_b (jittered)
 
+
+# Message passing (F023)
+HUB_AWARE = True              # damp high out-degree sources; log in-degree normalize
+HUB_OUT_EXP = 0.5             # divide source msgs by out_deg**exp
